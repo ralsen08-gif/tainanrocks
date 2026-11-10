@@ -9,16 +9,13 @@
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..800&display=swap" rel="stylesheet">
 <style>
   :root {
-    --ground: #dde2e6;   /* site board */
-    --paper: #f6f7f5;    /* card white, used for context massing */
+    --paper: #ffffff;
     --ink: #1e232a;
     --muted: #66707b;
     --rule: #a9b2bb;
-    --cell: 58px;
-    --street: 7px;
   }
   * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--ground); color: var(--ink);
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--paper); color: var(--ink);
     font-family: 'Archivo', system-ui, sans-serif; font-variation-settings: 'wdth' 100; }
   #view { position: fixed; inset: 0; }
   #view canvas { display: block; }
@@ -29,32 +26,6 @@
   .title p { margin: 10px 0 0; font-size: clamp(14px, 1.15vw, 18px); line-height: 1.4; color: var(--muted); }
   .title p.error { color: #b3261e; }
 
-  /* Key plan: the urban grid, streets included, as a live status board */
-  .keyplan { position: fixed; left: 32px; bottom: 28px; display: grid;
-    grid-template-columns: 22px repeat(var(--cols, 4), var(--cell));
-    grid-auto-rows: var(--cell); gap: var(--street); align-items: center; }
-  .keyplan .axis { font-size: 13px; font-weight: 600; color: var(--muted); text-align: center; align-self: end; height: auto; }
-  .keyplan .axis.row { align-self: center; }
-  .keyplan .axis.col { grid-row: 1; padding-bottom: 2px; }
-  .keyplan .corner { grid-row: 1; }
-  .keyplan > .axis.col, .keyplan > .corner { height: 18px; }
-  .keyplan { grid-template-rows: 18px; }
-  .cell { position: relative; height: 100%; border: 1.5px dashed var(--rule); border-radius: 3px;
-    display: flex; flex-direction: column; justify-content: center; align-items: center; color: var(--muted); }
-  .cell b { font-size: 17px; font-weight: 780; font-variation-settings: 'wdth' 125; line-height: 1; }
-  .cell small { font-size: 11px; margin-top: 4px; font-weight: 500; opacity: .85; }
-  .cell.on { border: 0; background: var(--c); color: var(--fg, var(--ink)); }
-  .cell.fresh::after { content: ''; position: absolute; inset: -5px; border: 2.5px solid var(--ink); border-radius: 6px; }
-  .cell.pulse::after { animation: ring 1.6s ease-out 2; }
-  @keyframes ring { 0% { transform: scale(1.18); opacity: 0; } 35% { opacity: 1; } 100% { transform: scale(1); } }
-
-  .label span { display: block; padding: 5px 9px 4px; border-radius: 3px; background: var(--c); color: var(--fg, var(--ink));
-    font: 780 15px/1 'Archivo', sans-serif; font-variation-settings: 'wdth' 125; white-space: nowrap;
-    box-shadow: 0 1px 0 rgba(30,35,42,.25); }
-  .label.pulse span { animation: lift 1.6s ease-out 2; }
-  @keyframes lift { 0% { transform: translateY(-14px) scale(1.25); } 100% { transform: none; } }
-  .hide-labels .label { display: none; }
-
   .keys { position: fixed; right: 32px; bottom: 28px; font-size: 13px; color: var(--muted); text-align: right; line-height: 1.7; }
   .keys button { font: inherit; color: var(--ink); background: var(--paper); border: 1px solid var(--rule);
     border-radius: 3px; padding: 3px 9px; margin-left: 6px; cursor: pointer; }
@@ -63,15 +34,11 @@
   .keys kbd { font: inherit; font-weight: 700; }
 
   @media (max-width: 700px) {
-    :root { --cell: 40px; --street: 5px; }
     .title { top: 16px; left: 16px; }
-    .keyplan { left: 16px; bottom: 16px; }
     .keys { right: 16px; bottom: 16px; }
     .keys button { display: block; margin: 6px 0 0 auto; }
     .keys .hint { display: none; }
-    .cell small { display: none; }
   }
-  @media (prefers-reduced-motion: reduce) { .cell.pulse::after, .label.pulse span { animation: none; } }
 </style>
 <script type="importmap">
 {
@@ -87,74 +54,52 @@
 <div id="view"></div>
 
 <header class="title">
-  <h1 id="title">Block workshop</h1>
+  <h1 id="title">Cube workshop</h1>
   <p id="status" role="status">Connecting…</p>
 </header>
 
-<nav class="keyplan" id="keyplan" aria-label="Blocks and when they were last published"></nav>
-
 <div class="keys">
   <span class="hint">Drag to orbit, scroll to zoom</span><br>
-  <button id="btn-rotate" aria-pressed="true" title="Slowly orbit the model (R)"><kbd>R</kbd> Rotate</button>
-  <button id="btn-color" title="Switch colors: groups, model, white (C)"><kbd>C</kbd> <span id="color-name">Group colors</span></button>
-  <button id="btn-labels" aria-pressed="true" title="Show block names (L)"><kbd>L</kbd> Labels</button>
-  <button id="btn-fit" title="Frame the whole site (F)"><kbd>F</kbd> Fit</button>
+  <button id="btn-spin" aria-pressed="false" title="Slowly turn each model on its plate (R)"><kbd>R</kbd> Spin</button>
+  <button id="btn-color" title="Switch colors: model, groups, white (C)"><kbd>C</kbd> <span id="color-name">Model colors</span></button>
+  <button id="btn-labels" aria-pressed="true" title="Show plate labels (L)"><kbd>L</kbd> Labels</button>
+  <button id="btn-fit" title="Frame all views (F)"><kbd>F</kbd> Fit</button>
 </div>
 
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import rhino3dm from 'rhino3dm';
 
-// ---------- settings (override with URL parameters, e.g. ?title=Studio%20B&poll=5&rows=ABCD&cols=4)
+// ---------- settings (override with URL parameters, e.g. ?title=Studio%20B&groups=8&explode=1&poll=5)
 const params = new URLSearchParams(location.search);
-const TITLE = params.get('title') || 'Block workshop';
+const TITLE = params.get('title') || 'Cube workshop';
 const POLL_MS = Math.max(3, Number(params.get('poll')) || 5) * 1000;
-const ROWS = (params.get('rows') || 'ABCD').toUpperCase().split('');
-const COLS = Math.max(1, Math.min(8, Number(params.get('cols')) || 4));
+const GROUPS = Math.max(1, Math.min(24, Math.round(Number(params.get('groups'))) || 8));
+const EXPLODE = params.has('explode') ? Math.max(0, Number(params.get('explode')) || 0) : 1;
 const STATE_URL = params.get('api') || '/api/state';
 const FRESH_MS = 90 * 1000;
 
 document.getElementById('title').textContent = TITLE;
 document.title = TITLE;
 
-// Riso-ink palette: distinct, print-like, legible on a projector
-const INKS = ['#ff48b0', '#0078bf', '#ffe800', '#00a95c', '#ff6c2f', '#765ba7', '#00838a', '#ff665e',
-              '#3255a4', '#ffb511', '#62a8e5', '#9d7ad2', '#bb8b41', '#237e74', '#e45d50', '#5ec8e5'];
-const CONTEXT_ID = 'CONTEXT';
-const GRID_IDS = ROWS.flatMap((r) => Array.from({ length: COLS }, (_, i) => r + (i + 1)));
+// Groups 1–8 get the colours from the reference Rhino file; any further groups get distinct inks.
+const GROUP_COLORS = ['#b4b4b4', '#d8d800', '#1fd41f', '#0c3a0c', '#e00000', '#d93636', '#00dede', '#a43ee0'];
+const EXTRA_COLORS = ['#ff48b0', '#0078bf', '#ff6c2f', '#765ba7', '#00838a', '#ffb511', '#62a8e5', '#bb8b41'];
+const WHITE = '#f4f4f2';
+const INK = '#1e232a', MUTED = '#8a929b';
 
-function inkFor(id) {
-  const i = GRID_IDS.indexOf(id);
-  if (i >= 0) return INKS[i % INKS.length];
+// Published block IDs "3", "G3", "GROUP3", "Group-3" all mean group 3.
+function groupNumber(id) {
+  const m = /^(?:GROUP|GRP|G)?[-_]?(\d{1,3})$/.exec(id);
+  return m ? Number(m[1]) : null;
+}
+function groupColor(id) {
+  const n = groupNumber(id);
+  if (n && n <= GROUP_COLORS.length) return GROUP_COLORS[n - 1];
+  if (n) return EXTRA_COLORS[(n - 1) % EXTRA_COLORS.length];
   let h = 0; for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-  return INKS[h % INKS.length];
-}
-function textOn(hex) {
-  const c = new THREE.Color(hex);
-  const l = 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b; // linear luminance
-  return l > 0.18 ? '#1e232a' : '#ffffff';
-}
-
-// ---------- key plan
-const keyplan = document.getElementById('keyplan');
-keyplan.style.setProperty('--cols', COLS);
-const cells = {};
-keyplan.appendChild(Object.assign(document.createElement('span'), { className: 'corner' }));
-for (let c = 1; c <= COLS; c++) keyplan.appendChild(Object.assign(document.createElement('span'), { className: 'axis col', textContent: c }));
-for (const r of ROWS) {
-  keyplan.appendChild(Object.assign(document.createElement('span'), { className: 'axis row', textContent: r }));
-  for (let c = 1; c <= COLS; c++) {
-    const id = r + c;
-    const el = document.createElement('div');
-    el.className = 'cell';
-    el.innerHTML = `<b>${id}</b><small></small>`;
-    el.style.setProperty('--c', inkFor(id));
-    el.style.setProperty('--fg', textOn(inkFor(id)));
-    keyplan.appendChild(el);
-    cells[id] = el;
-  }
+  return EXTRA_COLORS[h % EXTRA_COLORS.length];
 }
 
 // ---------- 3D scene (Rhino is Z-up)
@@ -165,64 +110,84 @@ renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 view.appendChild(renderer.domElement);
-const labelRenderer = new CSS2DRenderer();
-labelRenderer.domElement.style.cssText = 'position:absolute;inset:0;pointer-events:none';
-view.appendChild(labelRenderer.domElement);
+const MAX_ANISO = renderer.capabilities.getMaxAnisotropy();
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color('#dde2e6');
-const camera = new THREE.PerspectiveCamera(28, 1, 1, 20000);
+scene.background = new THREE.Color('#ffffff');
+const camera = new THREE.PerspectiveCamera(28, 1, 0.1, 20000);
 camera.up.set(0, 0, 1);
-camera.position.set(-300, -400, 350);
+camera.position.set(20, -60, 40);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
-controls.autoRotate = !matchMedia('(prefers-reduced-motion: reduce)').matches;
-controls.autoRotateSpeed = 0.35;
 controls.maxPolarAngle = Math.PI * 0.49;
 
-scene.add(new THREE.HemisphereLight('#ffffff', '#b9c0c8', 1.9));
-const sun = new THREE.DirectionalLight('#ffffff', 2.1);
+// Light from the front-left, like Rhino's default: top and front faces bright, the far sides dark.
+scene.add(new THREE.HemisphereLight('#ffffff', '#5a5f66', 0.75));
+const sun = new THREE.DirectionalLight('#ffffff', 2.4);
 sun.castShadow = true;
 sun.shadow.mapSize.set(4096, 4096);
 sun.shadow.bias = -0.0004;
-sun.shadow.normalBias = 0.6;
+sun.shadow.radius = 4;
 scene.add(sun, sun.target);
-const ground = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.ShadowMaterial({ opacity: 0.16 }));
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.ShadowMaterial({ opacity: 0.13 }));
 ground.receiveShadow = true;
 scene.add(ground);
 
-const edgeMat = new THREE.LineBasicMaterial({ color: '#1e232a', transparent: true, opacity: 0.5 });
-const curveMat = new THREE.LineBasicMaterial({ color: '#1e232a', transparent: true, opacity: 0.75 });
+const edgeMat = new THREE.LineBasicMaterial({ color: '#111111' });
+const curveMat = new THREE.LineBasicMaterial({ color: '#111111' });
+const plateMat = new THREE.LineBasicMaterial({ color: INK });
 
 function resize() {
   const w = innerWidth, h = innerHeight;
-  renderer.setSize(w, h); labelRenderer.setSize(w, h);
+  renderer.setSize(w, h);
   camera.aspect = w / h; camera.updateProjectionMatrix();
 }
 addEventListener('resize', resize); resize();
 
 // ---------- colour modes
-const MODES = ['groups', 'model', 'white'];
-const MODE_NAMES = { groups: 'Group colors', model: 'Model colors', white: 'White model' };
-let mode = 'groups';
+const MODES = ['model', 'groups', 'white'];
+const MODE_NAMES = { model: 'Model colors', groups: 'Group colors', white: 'White model' };
+let mode = 'model';
 function colorFor(id, modelColor) {
-  if (id === CONTEXT_ID) return '#f6f7f5';
-  if (mode === 'white') return '#f6f7f5';
-  if (mode === 'model') return modelColor || '#f6f7f5';
-  return inkFor(id);
+  if (mode === 'white') return WHITE;
+  if (mode === 'model' && modelColor) return modelColor;
+  return groupColor(id);
 }
 function recolor() {
   for (const [id, b] of Object.entries(blocks)) {
-    b.group.traverse((o) => { if (o.isMesh && o.userData.modelColor !== undefined) o.material.color.set(colorFor(id, o.userData.modelColor)); });
+    b.raw.traverse((o) => { if (o.isMesh && o.userData.modelColor !== undefined) o.material.color.set(colorFor(id, o.userData.modelColor)); });
   }
   document.getElementById('color-name').textContent = MODE_NAMES[mode];
+  rebuildLayout(); // fresh-plate tints follow the colours
 }
 
 // ---------- loading .3dm files
 const rhinoReady = rhino3dm();
 const jsonLoader = new THREE.BufferGeometryLoader();
 const UNIT_TO_M = { 1: 1e-6, 2: 0.001, 3: 0.01, 4: 1, 5: 1000, 8: 0.0254, 9: 0.3048, 10: 1609.344 };
-const blocks = {};   // id -> { url, group, label, publishedAt }
+const blocks = {};   // id -> { url, raw, box, publishedAt }  (raw is never in the scene; the views use clones)
+
+const enumValue = (e) => (e && e.value !== undefined ? e.value : e);
+const rgb = (c) => `rgb(${c.r},${c.g},${c.b})`;
+
+// The colour the object shows in Rhino: object colour, layer colour or material colour.
+function modelColorOf(doc, attrs) {
+  try {
+    const src = enumValue(attrs.colorSource);
+    if (src === 1) return rgb(attrs.objectColor);
+    if (src === 2) {
+      const m = attrs.materialIndex >= 0 ? doc.materials().get(attrs.materialIndex) : null;
+      if (m) { const c = m.diffuseColor; m.delete?.(); return rgb(c); }
+    }
+    const layer = doc.layers().get(attrs.layerIndex);
+    if (layer) {
+      const c = layer.color; layer.delete?.();
+      // Rhino's default layer is black; treat that as "no colour chosen".
+      if (c && (c.r || c.g || c.b)) return rgb(c);
+    }
+  } catch { /* fall back to the group colour */ }
+  return null;
+}
 
 async function buildGroup(id, url) {
   const rhino = await rhinoReady;
@@ -230,39 +195,53 @@ async function buildGroup(id, url) {
   if (!res.ok) throw new Error(`${res.status} loading ${id}`);
   const doc = rhino.File3dm.fromByteArray(new Uint8Array(await res.arrayBuffer()));
   const unit = doc.settings().modelUnitSystem;
-  const scale = UNIT_TO_M[unit && unit.value !== undefined ? unit.value : unit] ?? 1;
+  const scale = UNIT_TO_M[enumValue(unit)] ?? 1;
   const group = new THREE.Group();
+
+  function addMesh(rmesh, modelColor) {
+    const g = jsonLoader.parse(rmesh.toThreejsJSON());
+    if (!g.attributes.normal) g.computeVertexNormals();
+    const mat = new THREE.MeshStandardMaterial({ color: colorFor(id, modelColor), roughness: 0.95, metalness: 0,
+      side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
+    const mesh = new THREE.Mesh(g, mat);
+    mesh.castShadow = mesh.receiveShadow = true;
+    mesh.userData.modelColor = modelColor;
+    group.add(mesh);
+    group.add(new THREE.LineSegments(new THREE.EdgesGeometry(g, 28), edgeMat));
+  }
+
   const objects = doc.objects();
   for (let i = 0; i < objects.count; i++) {
     const obj = objects.get(i);
     const geo = obj.geometry();
     const attrs = obj.attributes();
-    let modelColor = null;
+    const modelColor = modelColorOf(doc, attrs);
+    const type = geo.objectType;
     try {
-      const src = attrs.colorSource && (attrs.colorSource.value ?? attrs.colorSource);
-      if (src === 1) { const c = attrs.objectColor; modelColor = `rgb(${c.r},${c.g},${c.b})`; }
-    } catch { /* keep default */ }
-
-    if (geo.objectType === rhino.ObjectType.Mesh) {
-      const g = jsonLoader.parse(geo.toThreejsJSON());
-      if (!g.attributes.normal) g.computeVertexNormals();
-      const mat = new THREE.MeshStandardMaterial({ color: colorFor(id, modelColor), roughness: 0.92, metalness: 0,
-        side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
-      const mesh = new THREE.Mesh(g, mat);
-      mesh.castShadow = mesh.receiveShadow = true;
-      mesh.userData.modelColor = modelColor;
-      group.add(mesh);
-      group.add(new THREE.LineSegments(new THREE.EdgesGeometry(g, 28), edgeMat));
-    } else if (geo.objectType === rhino.ObjectType.Curve) {
-      const pts = [];
-      if (typeof geo.point === 'function' && geo.pointCount > 1) {
-        // PolylineCurve (the publish script converts every curve to one)
-        for (let k = 0; k < geo.pointCount; k++) { const p = geo.point(k); pts.push(new THREE.Vector3(p[0], p[1], p[2])); }
-      } else {
-        const [t0, t1] = geo.domain;
-        for (let k = 0; k <= 96; k++) { const p = geo.pointAt(t0 + (t1 - t0) * k / 96); pts.push(new THREE.Vector3(p[0], p[1], p[2])); }
+      if (type === rhino.ObjectType.Mesh) {
+        addMesh(geo, modelColor);
+      } else if (type === rhino.ObjectType.Extrusion) {
+        const m = geo.getMesh(rhino.MeshType.Any); // only present if Rhino saved render meshes
+        if (m) addMesh(m, modelColor);
+      } else if (type === rhino.ObjectType.Brep) {
+        const faces = geo.faces();
+        for (let f = 0; f < faces.count; f++) {
+          const face = faces.get(f);
+          const m = face.getMesh(rhino.MeshType.Any);
+          if (m) addMesh(m, modelColor);
+        }
+      } else if (type === rhino.ObjectType.Curve) {
+        const pts = [];
+        if (typeof geo.point === 'function' && geo.pointCount > 1) {
+          for (let k = 0; k < geo.pointCount; k++) { const p = geo.point(k); pts.push(new THREE.Vector3(p[0], p[1], p[2])); }
+        } else {
+          const [t0, t1] = geo.domain;
+          for (let k = 0; k <= 96; k++) { const p = geo.pointAt(t0 + (t1 - t0) * k / 96); pts.push(new THREE.Vector3(p[0], p[1], p[2])); }
+        }
+        group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), curveMat));
       }
-      group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), curveMat));
+    } catch (err) {
+      console.warn(`Skipped an object in ${id}:`, err);
     }
     geo.delete?.(); attrs.delete?.(); obj.delete?.();
   }
@@ -276,97 +255,244 @@ function disposeGroup(group) {
   group.traverse((o) => { o.geometry?.dispose(); if (o.material && o.material !== edgeMat && o.material !== curveMat) o.material.dispose(); });
 }
 
-function placeLabel(id, group) {
-  if (id === CONTEXT_ID) return null;
-  const box = new THREE.Box3().setFromObject(group);
-  if (box.isEmpty()) return null;
-  const el = document.createElement('div');
-  el.className = 'label';
-  el.appendChild(Object.assign(document.createElement('span'), { textContent: id }));
-  el.style.setProperty('--c', inkFor(id));
-  el.style.setProperty('--fg', textOn(inkFor(id)));
-  const label = new CSS2DObject(el);
-  label.position.set((box.min.x + box.max.x) / 2, (box.min.y + box.max.y) / 2, box.max.z + 8);
-  label.center.set(0.5, 1);
-  scene.add(label);
-  return label;
+// ---------- the board: Combined, Combined exploded, and one plate per group
+//
+//   ┌──────────┐      ┌──────────┐
+//   │ combined │      │ exploded │
+//   └──────────┘      └──────────┘
+//   ┌────┬────┬────┬────┬────┬────┬────┬────┐
+//   │ G1 │ G2 │ G3 │ G4 │ G5 │ G6 │ G7 │ G8 │
+//   └────┴────┴────┴────┴────┴────┴────┴────┘
+//
+// Combined keeps every group at its real Rhino coordinates. Exploded pushes each group away from
+// the centre of the combined model by EXPLODE × its distance. The strip shows each group alone.
+const board = new THREE.Group();
+scene.add(board);
+let spinners = [];
+let spinAngle = 0;
+let showLabels = true;
+let lastBounds = null;
+let nominal = 3; // size of one piece before anything is published (metres)
+
+function slots() {
+  const list = [];
+  const byNumber = {};
+  for (const [id, b] of Object.entries(blocks)) {
+    const n = groupNumber(id);
+    if (n && n >= 1 && n <= GROUPS) {
+      // two IDs for the same group (e.g. "3" and "G3"): show the newer one
+      if (!byNumber[n] || new Date(b.publishedAt) > new Date(blocks[byNumber[n]].publishedAt)) byNumber[n] = id;
+    }
+  }
+  for (let n = 1; n <= GROUPS; n++) list.push({ label: `Group ${n}`, id: byNumber[n] || null, key: String(n) });
+  const extras = Object.keys(blocks).filter((id) => { const n = groupNumber(id); return !(n && n >= 1 && n <= GROUPS); }).sort();
+  for (const id of extras) list.push({ label: groupNumber(id) ? `Group ${groupNumber(id)}` : id, id, key: id });
+  return list;
 }
 
-function removeBlock(id) {
-  const b = blocks[id];
-  if (!b) return;
-  scene.remove(b.group); disposeGroup(b.group);
-  if (b.label) { scene.remove(b.label); b.label.element.remove(); }
-  delete blocks[id];
+function clearBoard() {
+  board.traverse((o) => {
+    if (!o.userData.own) return;
+    o.geometry?.dispose();
+    if (o.material && o.material !== plateMat) { o.material.map?.dispose(); o.material.dispose(); }
+  });
+  board.clear();
+  spinners = [];
+}
+
+function outline(x0, y0, w, h, z) {
+  const pts = [[x0, y0], [x0 + w, y0], [x0 + w, y0 + h], [x0, y0 + h]].map(([x, y]) => new THREE.Vector3(x, y, z));
+  const line = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), plateMat);
+  line.userData.own = true;
+  return line;
+}
+
+// Text lying flat on the board at the plate's front-left corner, like a Rhino text object.
+function groundText(lines, x0, y0, height, z) {
+  const PX = 96;
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  const fonts = lines.map((l) => `${l.weight || 700} ${Math.round(PX * (l.size || 1))}px Archivo, system-ui, sans-serif`);
+  let w = 0;
+  lines.forEach((l, i) => { ctx.font = fonts[i]; w = Math.max(w, ctx.measureText(l.text).width); });
+  const lineH = lines.map((l) => PX * (l.size || 1) * 1.25);
+  canvas.width = Math.ceil(w + PX * 0.2);
+  canvas.height = Math.ceil(lineH.reduce((a, b) => a + b, 0) + PX * 0.1);
+  let y = 0;
+  lines.forEach((l, i) => {
+    ctx.font = fonts[i]; ctx.fillStyle = l.color || INK; ctx.textBaseline = 'top';
+    ctx.fillText(l.text, PX * 0.04, y + PX * 0.08);
+    y += lineH[i];
+  });
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = MAX_ANISO;
+  const unit = height / PX;
+  const pw = canvas.width * unit, ph = canvas.height * unit;
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(pw, ph),
+    new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false }));
+  mesh.position.set(x0 + pw / 2, y0 - ph / 2, z);
+  mesh.userData.own = true;
+  mesh.userData.label = true;
+  mesh.visible = showLabels;
+  return mesh;
+}
+
+// A plate with its outline, label and a turntable pivot at its centre. Returns the pivot.
+function plate(x0, y0, w, h, lines, tint, unit) {
+  const z = unit * 0.002;
+  board.add(outline(x0, y0, w, h, z));
+  board.add(groundText(lines, x0 - unit * 0.05, y0 - unit * 0.05, unit * 0.13, z));
+  if (tint) {
+    const fill = new THREE.Mesh(new THREE.PlaneGeometry(w, h),
+      new THREE.MeshBasicMaterial({ color: tint, transparent: true, opacity: 0.16, depthWrite: false }));
+    fill.position.set(x0 + w / 2, y0 + h / 2, z * 0.5);
+    fill.userData.own = true;
+    board.add(fill);
+  }
+  const pivot = new THREE.Group();
+  pivot.position.set(x0 + w / 2, y0 + h / 2, 0);
+  pivot.rotation.z = spinAngle;
+  board.add(pivot);
+  spinners.push(pivot);
+  return pivot;
+}
+
+// Put a clone of a block's model on a pivot so that `anchor` (a world point of the model) lands on the pivot.
+function placeClone(pivot, b, anchor) {
+  const c = b.raw.clone();
+  c.position.set(-anchor.x, -anchor.y, -anchor.z);
+  pivot.add(c);
+}
+
+function timeAgo(iso) {
+  const s = Math.max(0, (Date.now() - new Date(iso)) / 1000);
+  if (s < 45) return 'just now';
+  if (s < 3600) return `${Math.round(s / 60)} min ago`;
+  return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
+
+function rebuildLayout() {
+  clearBoard();
+  const list = slots();
+  const placed = list.filter((s) => s.id && !blocks[s.id].box.isEmpty());
+
+  // Size of one cell: big enough for the widest single piece.
+  let piece = 0;
+  for (const s of placed) { const sz = blocks[s.id].box.getSize(new THREE.Vector3()); piece = Math.max(piece, sz.x, sz.y); }
+  if (piece > 0) nominal = piece;
+  const C = nominal * 1.9;
+
+  // Combined model and its exploded version.
+  const combined = new THREE.Box3();
+  for (const s of placed) combined.union(blocks[s.id].box);
+  const centre = combined.isEmpty() ? new THREE.Vector3() : combined.getCenter(new THREE.Vector3());
+  const offsets = {};
+  const exploded = new THREE.Box3();
+  for (const s of placed) {
+    const box = blocks[s.id].box;
+    offsets[s.id] = box.getCenter(new THREE.Vector3()).sub(centre).multiplyScalar(EXPLODE);
+    exploded.union(box.clone().translate(offsets[s.id]));
+  }
+  let extent = 0;
+  for (const bx of [combined, exploded]) if (!bx.isEmpty()) { const sz = bx.getSize(new THREE.Vector3()); extent = Math.max(extent, sz.x, sz.y); }
+  const P = Math.max(extent * 1.4, C * 2);
+
+  // Positions on the board (x to the right, y away from the viewer, z up).
+  const stripW = list.length * C;
+  const topY = C + C * 1.2;
+  const x1 = Math.max(stripW * 0.27 - P / 2, 0);
+  const x2 = Math.max(stripW * 0.69 - P / 2, x1 + P + C * 0.8);
+
+  const now = Date.now();
+  const freshTint = (id) => (id && now - new Date(blocks[id].publishedAt) < FRESH_MS ? colorFor(id, firstModelColor(id)) : null);
+
+  // Combined
+  const pc = plate(x1, topY, P, P, [{ text: 'Combined' }], null, C);
+  for (const s of placed) placeClone(pc, blocks[s.id], new THREE.Vector3(centre.x, centre.y, combined.min.z));
+
+  // Combined exploded
+  const pe = plate(x2, topY, P, P, [{ text: 'Combined exploded' }], null, C);
+  if (!exploded.isEmpty()) {
+    const ec = exploded.getCenter(new THREE.Vector3());
+    for (const s of placed) {
+      const o = offsets[s.id];
+      placeClone(pe, blocks[s.id], new THREE.Vector3(ec.x - o.x, ec.y - o.y, exploded.min.z - o.z));
+    }
+  }
+
+  // One plate per group
+  list.forEach((s, i) => {
+    const b = s.id && blocks[s.id];
+    const lines = [{ text: s.label, color: b ? INK : MUTED },
+      { text: b ? timeAgo(b.publishedAt) : 'not published yet', size: 0.7, weight: 500, color: MUTED }];
+    const p = plate(i * C, 0, C, C, lines, freshTint(s.id), C);
+    if (b && !b.box.isEmpty()) {
+      const bc = b.box.getCenter(new THREE.Vector3());
+      placeClone(p, b, new THREE.Vector3(bc.x, bc.y, b.box.min.z));
+    }
+  });
+
+  board.updateMatrixWorld(true);
+  const bounds = new THREE.Box3().setFromObject(board);
+  fitShadows(bounds);
+  // Re-frame when the board changes size a lot (first block arrives, models change scale).
+  const size = bounds.getSize(new THREE.Vector3()).length();
+  if (!lastBounds || Math.abs(size - lastBounds) / lastBounds > 0.25) fit(bounds);
+  lastBounds = size;
+}
+
+function firstModelColor(id) {
+  let c = null;
+  blocks[id].raw.traverse((o) => { if (!c && o.isMesh) c = o.userData.modelColor; });
+  return c;
 }
 
 // ---------- framing
-function contentBox() {
-  const box = new THREE.Box3();
-  for (const b of Object.values(blocks)) box.expandByObject(b.group);
-  return box;
-}
 function fitShadows(box) {
   const c = box.getCenter(new THREE.Vector3());
-  const r = Math.max(box.getSize(new THREE.Vector3()).length() / 2, 50);
+  const r = Math.max(box.getSize(new THREE.Vector3()).length() / 2, 1);
   sun.target.position.copy(c);
-  sun.position.copy(c).add(new THREE.Vector3(-0.55, -0.75, 1.05).normalize().multiplyScalar(r * 2.5));
+  sun.position.copy(c).add(new THREE.Vector3(-0.3, -0.9, 1.1).normalize().multiplyScalar(r * 2.5));
   const s = sun.shadow.camera;
-  s.left = -r; s.right = r; s.top = r; s.bottom = -r; s.near = 1; s.far = r * 6;
+  s.left = -r; s.right = r; s.top = r; s.bottom = -r; s.near = r * 0.1; s.far = r * 6;
   s.updateProjectionMatrix();
-  ground.position.set(c.x, c.y, box.min.z - 0.05);
+  sun.shadow.normalBias = r * 0.0015;
+  ground.position.set(c.x, c.y, -r * 0.0005);
   ground.scale.set(r * 8, r * 8, 1);
 }
-function fit() {
-  const box = contentBox();
+function fit(box = new THREE.Box3().setFromObject(board)) {
   if (box.isEmpty()) return;
   const c = box.getCenter(new THREE.Vector3());
   const r = box.getSize(new THREE.Vector3()).length() / 2;
-  const dist = r / Math.sin(THREE.MathUtils.degToRad(camera.fov / 2)) * 0.95;
+  const vfov = THREE.MathUtils.degToRad(camera.fov);
+  const hfov = 2 * Math.atan(Math.tan(vfov / 2) * camera.aspect);
+  const dist = r / Math.sin(Math.min(vfov, hfov) / 2) * (camera.aspect < 1 ? 1 : 0.8); // the flat board is smaller than its bounding sphere
   controls.target.copy(c);
-  camera.position.copy(c).add(new THREE.Vector3(-0.62, -0.95, 0.85).normalize().multiplyScalar(dist));
+  camera.position.copy(c).add(new THREE.Vector3(0.45, -1, 0.72).normalize().multiplyScalar(dist));
   camera.near = dist / 100; camera.far = dist * 20; camera.updateProjectionMatrix();
 }
 
 // ---------- polling
-let firstLoad = true;
 let lastEvent = null;
+let firstLoad = true;
 const statusEl = document.getElementById('status');
-
 const clock = (iso) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-function timeAgo(iso) {
-  const s = Math.max(0, (Date.now() - new Date(iso)) / 1000);
-  if (s < 45) return 'just now';
-  if (s < 3600) return `${Math.round(s / 60)} min`;
-  return clock(iso);
-}
 
-function renderKeyplan() {
-  for (const [id, el] of Object.entries(cells)) {
-    const b = blocks[id];
-    el.classList.toggle('on', !!b);
-    el.classList.toggle('fresh', !!b && Date.now() - new Date(b.publishedAt) < FRESH_MS);
-    el.querySelector('small').textContent = b ? timeAgo(b.publishedAt) : '';
-    el.title = b ? `${id} published ${new Date(b.publishedAt).toLocaleTimeString()}` : `${id} not published yet`;
-  }
-  const n = Object.keys(blocks).filter((id) => id !== CONTEXT_ID).length;
+function renderStatus() {
   if (statusEl.classList.contains('error')) return;
-  if (n === 0) statusEl.textContent = 'No blocks yet. Press Publish in Rhino and your block appears here.';
-  else statusEl.textContent = `${n} ${n === 1 ? 'block' : 'blocks'} published.` +
-    (lastEvent ? ` ${lastEvent.id} updated at ${clock(lastEvent.at)}.` : '');
+  const n = slots().filter((s) => s.id).length;
+  if (n === 0) statusEl.textContent = 'No groups yet. Press Publish in Rhino and your cube appears here.';
+  else statusEl.textContent = `${n} of ${Math.max(GROUPS, n)} groups published.` +
+    (lastEvent ? ` ${slotLabel(lastEvent.id)} updated at ${clock(lastEvent.at)}.` : '');
 }
-
-function pulse(id) {
-  const cell = cells[id];
-  if (cell) { cell.classList.remove('pulse'); void cell.offsetWidth; cell.classList.add('pulse'); }
-  const label = blocks[id] && blocks[id].label;
-  if (label) { label.element.classList.remove('pulse'); void label.element.offsetWidth; label.element.classList.add('pulse'); }
-}
+function slotLabel(id) { const n = groupNumber(id); return n ? `Group ${n}` : id; }
 
 let polling = false;
 async function poll() {
   if (polling) return;
   polling = true;
+  let changed = firstLoad;
   try {
     const res = await fetch(STATE_URL, { cache: 'no-store' });
     if (!res.ok) throw new Error(`Server answered ${res.status}`);
@@ -374,78 +500,77 @@ async function poll() {
     statusEl.classList.remove('error');
     const entries = state.blocks || {};
 
-    for (const id of Object.keys(blocks)) if (!entries[id]) removeBlock(id);
-
+    for (const id of Object.keys(blocks)) {
+      if (!entries[id]) { disposeGroup(blocks[id].raw); delete blocks[id]; changed = true; }
+    }
     for (const [id, entry] of Object.entries(entries)) {
       if (blocks[id] && blocks[id].url === entry.url) continue;
       try {
-        const group = await buildGroup(id, entry.url);
+        const raw = await buildGroup(id, entry.url);
         const wasThere = !!blocks[id];
-        removeBlock(id);
-        scene.add(group);
-        blocks[id] = { url: entry.url, group, publishedAt: entry.publishedAt, label: placeLabel(id, group) };
-        if (!firstLoad || wasThere) {
-          lastEvent = { id, at: entry.publishedAt };
-          pulse(id);
-        }
+        if (wasThere) disposeGroup(blocks[id].raw);
+        blocks[id] = { url: entry.url, raw, publishedAt: entry.publishedAt, box: new THREE.Box3().setFromObject(raw) };
+        if (!firstLoad || wasThere) lastEvent = { id, at: entry.publishedAt };
+        changed = true;
       } catch (err) {
         console.warn(`Could not load ${id}:`, err);
       }
     }
     if (!lastEvent) {
-      const latest = Object.entries(entries).filter(([id]) => id !== CONTEXT_ID)
-        .sort((a, b) => new Date(b[1].publishedAt) - new Date(a[1].publishedAt))[0];
+      const latest = Object.entries(entries).sort((a, b) => new Date(b[1].publishedAt) - new Date(a[1].publishedAt))[0];
       if (latest) lastEvent = { id: latest[0], at: latest[1].publishedAt };
-    }
-    const box = contentBox();
-    if (!box.isEmpty()) {
-      fitShadows(box);
-      if (firstLoad) fit();
-      firstLoad = false;
     }
   } catch (err) {
     statusEl.classList.add('error');
     statusEl.textContent = `Can't reach the server (${err.message}). Retrying every ${POLL_MS / 1000} s.`;
   } finally {
+    if (changed) rebuildLayout();
+    firstLoad = false;
     polling = false;
-    renderKeyplan();
+    renderStatus();
   }
 }
 
 // ---------- controls
-let resumeTimer;
-const btnRotate = document.getElementById('btn-rotate');
+const btnSpin = document.getElementById('btn-spin');
 const btnLabels = document.getElementById('btn-labels');
-btnRotate.setAttribute('aria-pressed', controls.autoRotate);
-let rotateWanted = controls.autoRotate;
-function setRotate(on) { rotateWanted = on; controls.autoRotate = on; btnRotate.setAttribute('aria-pressed', on); }
-function setLabels(on) { document.body.classList.toggle('hide-labels', !on); btnLabels.setAttribute('aria-pressed', on); }
+let spinning = false;
+function setSpin(on) { spinning = on; btnSpin.setAttribute('aria-pressed', on); }
+function setLabels(on) {
+  showLabels = on;
+  board.traverse((o) => { if (o.userData.label) o.visible = on; });
+  btnLabels.setAttribute('aria-pressed', on);
+}
 function nextMode() { mode = MODES[(MODES.indexOf(mode) + 1) % MODES.length]; recolor(); }
-btnRotate.onclick = () => setRotate(!rotateWanted);
-btnLabels.onclick = () => setLabels(btnLabels.getAttribute('aria-pressed') !== 'true');
+btnSpin.onclick = () => setSpin(!spinning);
+btnLabels.onclick = () => setLabels(!showLabels);
 document.getElementById('btn-color').onclick = nextMode;
-document.getElementById('btn-fit').onclick = fit;
+document.getElementById('btn-fit').onclick = () => fit();
 addEventListener('keydown', (e) => {
   if (e.target.closest('button') && (e.key === 'Enter' || e.key === ' ')) return;
   const k = e.key.toLowerCase();
-  if (k === 'r') setRotate(!rotateWanted);
+  if (k === 'r') setSpin(!spinning);
   else if (k === 'c') nextMode();
-  else if (k === 'l') btnLabels.click();
+  else if (k === 'l') setLabels(!showLabels);
   else if (k === 'f') fit();
 });
-// pause the slow orbit while someone is steering, resume after 20 s
-controls.addEventListener('start', () => { controls.autoRotate = false; clearTimeout(resumeTimer); });
-controls.addEventListener('end', () => { resumeTimer = setTimeout(() => { controls.autoRotate = rotateWanted; }, 20000); });
 
+const timer = new THREE.Clock();
 renderer.setAnimationLoop(() => {
+  const dt = timer.getDelta();
+  if (spinning) {
+    spinAngle = (spinAngle + dt * 0.3) % (Math.PI * 2);
+    for (const p of spinners) p.rotation.z = spinAngle;
+  }
   controls.update();
   renderer.render(scene, camera);
-  labelRenderer.render(scene, camera);
 });
 
+// Draw the labels with the web font once it has loaded.
+await Promise.race([document.fonts.load('700 96px Archivo'), new Promise((r) => setTimeout(r, 2500))]).catch(() => {});
 poll();
 setInterval(poll, POLL_MS);
-setInterval(renderKeyplan, 15000);
+setInterval(() => { rebuildLayout(); renderStatus(); }, 15000); // refresh "x min ago" and fresh tints
 </script>
 </body>
 </html>

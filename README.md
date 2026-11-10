@@ -95,9 +95,9 @@ curl -X DELETE "https://your-project.vercel.app/api/publish?block=3" -H "x-works
 
 ## Limits on the free Vercel plan
 
-- Each publish uses 2 of the 2,000 monthly "advanced" Blob operations, so roughly 900 publishes a month. A 3-hour workshop with 8 groups publishing every 10 minutes uses about 300.
+- Each publish uses 3 of the 2,000 monthly "advanced" Blob operations, so roughly 650 publishes a month. A 3-hour workshop with 8 groups publishing every 10 minutes uses about 450.
 - The screen reads the server about 10 times a minute no matter how many browsers are open, well inside the free read allowance. Close the viewer outside class hours.
-- Those reads go through Vercel's cache, which can be up to a minute behind, so a new publish takes up to a minute to appear by itself. **Update** (U) skips the cache and costs 2 Blob operations per press, so pressing it a few dozen times a session is fine; don't script it.
+- Those reads go through Vercel's cache, which can be up to a minute behind, so a new publish takes up to a minute to appear by itself. **Update** (U) skips the cache: it lists the stored models and rebuilds the list from them, which costs 2 advanced Blob operations per press. Pressing it a few dozen times a session is fine; don't script it.
 - Uploads are capped at 4 MB per group (Vercel's request limit is 4.5 MB). Massing models are usually well under 1 MB.
 
 ## Troubleshooting

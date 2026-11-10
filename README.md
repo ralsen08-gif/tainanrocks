@@ -65,7 +65,7 @@ What gets published: everything visible. Hidden objects and hidden layers are sk
 
 ## On the screen
 
-Open your Vercel URL fullscreen (F11). Drag to orbit, scroll to zoom.
+Open your Vercel URL fullscreen (F11). Drag to orbit (all the way round, so you can look at the bottom too), scroll to zoom.
 
 | Key | Does |
 |---|---|
@@ -77,14 +77,17 @@ Open your Vercel URL fullscreen (F11). Drag to orbit, scroll to zoom.
 | **R** | Slow orbit on/off (dragging pauses it for 20 s; the matrix never orbits) |
 | **C** | Colours: group colours / model colours / white model |
 | **T** | Rock: show the cubes in stone |
+| **X** | Section: cut the model with planes along X, Y and Z |
 | **Esc** | Close the cube's card |
 | **L** | Group labels |
 | **F** | Fit the view |
 | **U** | Update: load the newest models now (see below) |
 
-**Click a cube** for its card: size, volume, void (share of its bounding box left empty), estimated weight in sandstone (2.3 t/m³), surface area, which cubes it touches and over how much area, triangle count and file size, plus buttons for One by one and Interfaces. The card also **downloads the published .3dm files**: this version, all versions of the group (zip), or every group as shown (zip; when you're looking back in the history, the versions of that moment). These are the files the Publish button sent, so meshes in metres, not the students' working files. Volume needs a closed model; otherwise the card says so. Clicking empty space or **Esc** closes it.
+**Click a cube** for its card: size, volume, void (share of its bounding box left empty), estimated weight in concrete (2.4 t/m³), surface area, which cubes it touches and over how much area, triangle count and file size, plus buttons for One by one and Interfaces. The card also **downloads the published .3dm files**: this version, all versions of the group (zip), or every group as shown (zip; when you're looking back in the history, the versions of that moment). These are the files the Publish button sent, so meshes in metres, not the students' working files. Volume needs a closed model; otherwise the card says so. Clicking empty space or **Esc** closes it.
 
 Clicking a group chip at the bottom left opens that group in One by one with its card. Each chip shows when the group last published; a dot marks the ones published in the last 90 seconds.
+
+**Section** (X) cuts the model with up to three planes, one along each axis. Tick X, Y or Z, slide the plane through the model (its position is a share of what's on screen, so it works in every view), and ⇄ keeps the other side. A plane that's switched on removes the side the camera is on, so the cut faces you. Cut material shows as dark poché; coloured patches inside it are the faces of voids. Thin red lines mark the planes, and clicking skips what's cut away.
 
 **Rock** (T) shows the cubes in stone: a sandstone-like pattern (made in the browser, no image files) about 35 cm across, tinted with the group colour, or plain stone together with the white model.
 

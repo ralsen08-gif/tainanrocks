@@ -1,12 +1,12 @@
 // GET /api/state          -> the current manifest: which blocks are published and where their files are.
-// GET /api/state?fresh=1  -> the same, read past the CDN (the screen's Update button).
+// GET /api/state?fresh=1  -> rebuilt from the stored models right now (the screen's Update button).
 //
 // The normal response is cached at Vercel's edge for a few seconds, so any number of open viewers
 // cost at most ~10 manifest reads per minute. Those reads go through the Blob CDN, which can serve
-// a manifest up to a minute old. ?fresh=1 costs two Blob operations per request (head + one
-// uncached read), so it's only used when someone presses Update.
+// a manifest up to a minute old. ?fresh=1 lists the stored models and rewrites the manifest from
+// them (2 advanced Blob operations), so it's only used when someone presses Update.
 import * as blob from '@vercel/blob';
-import { json, readManifest, readManifestFresh } from '../lib/manifest.js';
+import { json, readManifest, syncManifest } from '../lib/manifest.js';
 
 export default {
   async fetch(request) {
@@ -15,7 +15,7 @@ export default {
       if (fresh) {
         let manifest, isFresh = true;
         try {
-          ({ manifest } = await readManifestFresh(blob));
+          ({ manifest } = await syncManifest(blob));
         } catch (err) {
           console.error(err);
           ({ manifest } = await readManifest(blob)); // storage hiccup: better a cached list than none

@@ -42,7 +42,7 @@ Rhino (optional)    ◀───────────  /api/state  (WorkshopS
 ## Before the workshop
 
 - **Template file:** give every group the same .3dm with each group's cube already at its place in the combined shape (real coordinates), so the **Combined** view assembles itself without anyone moving anything. The viewer centres each group's piece on its own plate, so position only matters for Combined.
-- **Group IDs:** when the publish script asks which block you're designing, groups answer with their number: `1` … `8` (`G3` or `GROUP3` also work). Any other ID gets an extra plate at the end of the row.
+- **Group numbers:** the publish script asks each group for its number (Group 1 … 8) and uploads under that number, so it matches the chip with the same number on the screen. For more or fewer groups, change `GROUPS` at the top of `WorkshopPublish.py` and open the screen with `?groups=`.
 - **Colours:** the screen uses each object's colour from Rhino (object colour, or the layer colour if that isn't black). Pieces without a colour get the group's colour: 1 grey, 2 yellow, 3 green, 4 dark green, 5 red, 6 light red, 7 cyan, 8 purple.
 - **Dry run:** publish from two laptops on the classroom Wi-Fi and check the screen updates.
 
@@ -54,7 +54,7 @@ Rhino (optional)    ◀───────────  /api/state  (WorkshopS
    ! _-RunPythonScript "C:\Users\you\Documents\WorkshopPublish.py"
    ```
    On Mac: `! _-RunPythonScript "/Users/you/Documents/WorkshopPublish.py"`
-3. Click it. The first time it asks which block you're designing. After that, **Enter publishes**.
+3. Click it. The first time it asks which group you are (it remembers this in the Rhino file). After that, **Enter publishes**. Click **Group** on the command line to change the number.
 4. Optional: click **PublishOnSave** on the command line to turn it **On**. Every Ctrl+S then publishes automatically. After restarting Rhino, click the button once to re-arm it.
 
 What gets published: everything visible. Hidden objects and hidden layers are skipped, so hide anything that shouldn't be on the big screen. Blocks over 4 MB are refused with a message saying so.

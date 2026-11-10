@@ -1,0 +1,451 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Workshop live</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ground: #dde2e6;   /* site board */
+    --paper: #f6f7f5;    /* card white, used for context massing */
+    --ink: #1e232a;
+    --muted: #66707b;
+    --rule: #a9b2bb;
+    --cell: 58px;
+    --street: 7px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--ground); color: var(--ink);
+    font-family: 'Archivo', system-ui, sans-serif; font-variation-settings: 'wdth' 100; }
+  #view { position: fixed; inset: 0; }
+  #view canvas { display: block; }
+
+  .title { position: fixed; top: 28px; left: 32px; max-width: min(56ch, 70vw); pointer-events: none; }
+  .title h1 { margin: 0; font-size: clamp(22px, 2.6vw, 38px); line-height: 1.05; font-weight: 750;
+    font-variation-settings: 'wdth' 125; letter-spacing: -0.01em; }
+  .title p { margin: 10px 0 0; font-size: clamp(14px, 1.15vw, 18px); line-height: 1.4; color: var(--muted); }
+  .title p.error { color: #b3261e; }
+
+  /* Key plan: the urban grid, streets included, as a live status board */
+  .keyplan { position: fixed; left: 32px; bottom: 28px; display: grid;
+    grid-template-columns: 22px repeat(var(--cols, 4), var(--cell));
+    grid-auto-rows: var(--cell); gap: var(--street); align-items: center; }
+  .keyplan .axis { font-size: 13px; font-weight: 600; color: var(--muted); text-align: center; align-self: end; height: auto; }
+  .keyplan .axis.row { align-self: center; }
+  .keyplan .axis.col { grid-row: 1; padding-bottom: 2px; }
+  .keyplan .corner { grid-row: 1; }
+  .keyplan > .axis.col, .keyplan > .corner { height: 18px; }
+  .keyplan { grid-template-rows: 18px; }
+  .cell { position: relative; height: 100%; border: 1.5px dashed var(--rule); border-radius: 3px;
+    display: flex; flex-direction: column; justify-content: center; align-items: center; color: var(--muted); }
+  .cell b { font-size: 17px; font-weight: 780; font-variation-settings: 'wdth' 125; line-height: 1; }
+  .cell small { font-size: 11px; margin-top: 4px; font-weight: 500; opacity: .85; }
+  .cell.on { border: 0; background: var(--c); color: var(--fg, var(--ink)); }
+  .cell.fresh::after { content: ''; position: absolute; inset: -5px; border: 2.5px solid var(--ink); border-radius: 6px; }
+  .cell.pulse::after { animation: ring 1.6s ease-out 2; }
+  @keyframes ring { 0% { transform: scale(1.18); opacity: 0; } 35% { opacity: 1; } 100% { transform: scale(1); } }
+
+  .label span { display: block; padding: 5px 9px 4px; border-radius: 3px; background: var(--c); color: var(--fg, var(--ink));
+    font: 780 15px/1 'Archivo', sans-serif; font-variation-settings: 'wdth' 125; white-space: nowrap;
+    box-shadow: 0 1px 0 rgba(30,35,42,.25); }
+  .label.pulse span { animation: lift 1.6s ease-out 2; }
+  @keyframes lift { 0% { transform: translateY(-14px) scale(1.25); } 100% { transform: none; } }
+  .hide-labels .label { display: none; }
+
+  .keys { position: fixed; right: 32px; bottom: 28px; font-size: 13px; color: var(--muted); text-align: right; line-height: 1.7; }
+  .keys button { font: inherit; color: var(--ink); background: var(--paper); border: 1px solid var(--rule);
+    border-radius: 3px; padding: 3px 9px; margin-left: 6px; cursor: pointer; }
+  .keys button[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .keys button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+  .keys kbd { font: inherit; font-weight: 700; }
+
+  @media (max-width: 700px) {
+    :root { --cell: 40px; --street: 5px; }
+    .title { top: 16px; left: 16px; }
+    .keyplan { left: 16px; bottom: 16px; }
+    .keys { right: 16px; bottom: 16px; }
+    .keys button { display: block; margin: 6px 0 0 auto; }
+    .keys .hint { display: none; }
+    .cell small { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) { .cell.pulse::after, .label.pulse span { animation: none; } }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/",
+    "rhino3dm": "https://cdn.jsdelivr.net/npm/rhino3dm@8.4.0/rhino3dm.module.min.js"
+  }
+}
+</script>
+</head>
+<body>
+<div id="view"></div>
+
+<header class="title">
+  <h1 id="title">Block workshop</h1>
+  <p id="status" role="status">Connecting…</p>
+</header>
+
+<nav class="keyplan" id="keyplan" aria-label="Blocks and when they were last published"></nav>
+
+<div class="keys">
+  <span class="hint">Drag to orbit, scroll to zoom</span><br>
+  <button id="btn-rotate" aria-pressed="true" title="Slowly orbit the model (R)"><kbd>R</kbd> Rotate</button>
+  <button id="btn-color" title="Switch colors: groups, model, white (C)"><kbd>C</kbd> <span id="color-name">Group colors</span></button>
+  <button id="btn-labels" aria-pressed="true" title="Show block names (L)"><kbd>L</kbd> Labels</button>
+  <button id="btn-fit" title="Frame the whole site (F)"><kbd>F</kbd> Fit</button>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+import rhino3dm from 'rhino3dm';
+
+// ---------- settings (override with URL parameters, e.g. ?title=Studio%20B&poll=5&rows=ABCD&cols=4)
+const params = new URLSearchParams(location.search);
+const TITLE = params.get('title') || 'Block workshop';
+const POLL_MS = Math.max(3, Number(params.get('poll')) || 5) * 1000;
+const ROWS = (params.get('rows') || 'ABCD').toUpperCase().split('');
+const COLS = Math.max(1, Math.min(8, Number(params.get('cols')) || 4));
+const STATE_URL = params.get('api') || '/api/state';
+const FRESH_MS = 90 * 1000;
+
+document.getElementById('title').textContent = TITLE;
+document.title = TITLE;
+
+// Riso-ink palette: distinct, print-like, legible on a projector
+const INKS = ['#ff48b0', '#0078bf', '#ffe800', '#00a95c', '#ff6c2f', '#765ba7', '#00838a', '#ff665e',
+              '#3255a4', '#ffb511', '#62a8e5', '#9d7ad2', '#bb8b41', '#237e74', '#e45d50', '#5ec8e5'];
+const CONTEXT_ID = 'CONTEXT';
+const GRID_IDS = ROWS.flatMap((r) => Array.from({ length: COLS }, (_, i) => r + (i + 1)));
+
+function inkFor(id) {
+  const i = GRID_IDS.indexOf(id);
+  if (i >= 0) return INKS[i % INKS.length];
+  let h = 0; for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return INKS[h % INKS.length];
+}
+function textOn(hex) {
+  const c = new THREE.Color(hex);
+  const l = 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b; // linear luminance
+  return l > 0.18 ? '#1e232a' : '#ffffff';
+}
+
+// ---------- key plan
+const keyplan = document.getElementById('keyplan');
+keyplan.style.setProperty('--cols', COLS);
+const cells = {};
+keyplan.appendChild(Object.assign(document.createElement('span'), { className: 'corner' }));
+for (let c = 1; c <= COLS; c++) keyplan.appendChild(Object.assign(document.createElement('span'), { className: 'axis col', textContent: c }));
+for (const r of ROWS) {
+  keyplan.appendChild(Object.assign(document.createElement('span'), { className: 'axis row', textContent: r }));
+  for (let c = 1; c <= COLS; c++) {
+    const id = r + c;
+    const el = document.createElement('div');
+    el.className = 'cell';
+    el.innerHTML = `<b>${id}</b><small></small>`;
+    el.style.setProperty('--c', inkFor(id));
+    el.style.setProperty('--fg', textOn(inkFor(id)));
+    keyplan.appendChild(el);
+    cells[id] = el;
+  }
+}
+
+// ---------- 3D scene (Rhino is Z-up)
+THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
+const view = document.getElementById('view');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+view.appendChild(renderer.domElement);
+const labelRenderer = new CSS2DRenderer();
+labelRenderer.domElement.style.cssText = 'position:absolute;inset:0;pointer-events:none';
+view.appendChild(labelRenderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#dde2e6');
+const camera = new THREE.PerspectiveCamera(28, 1, 1, 20000);
+camera.up.set(0, 0, 1);
+camera.position.set(-300, -400, 350);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.autoRotate = !matchMedia('(prefers-reduced-motion: reduce)').matches;
+controls.autoRotateSpeed = 0.35;
+controls.maxPolarAngle = Math.PI * 0.49;
+
+scene.add(new THREE.HemisphereLight('#ffffff', '#b9c0c8', 1.9));
+const sun = new THREE.DirectionalLight('#ffffff', 2.1);
+sun.castShadow = true;
+sun.shadow.mapSize.set(4096, 4096);
+sun.shadow.bias = -0.0004;
+sun.shadow.normalBias = 0.6;
+scene.add(sun, sun.target);
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.ShadowMaterial({ opacity: 0.16 }));
+ground.receiveShadow = true;
+scene.add(ground);
+
+const edgeMat = new THREE.LineBasicMaterial({ color: '#1e232a', transparent: true, opacity: 0.5 });
+const curveMat = new THREE.LineBasicMaterial({ color: '#1e232a', transparent: true, opacity: 0.75 });
+
+function resize() {
+  const w = innerWidth, h = innerHeight;
+  renderer.setSize(w, h); labelRenderer.setSize(w, h);
+  camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize); resize();
+
+// ---------- colour modes
+const MODES = ['groups', 'model', 'white'];
+const MODE_NAMES = { groups: 'Group colors', model: 'Model colors', white: 'White model' };
+let mode = 'groups';
+function colorFor(id, modelColor) {
+  if (id === CONTEXT_ID) return '#f6f7f5';
+  if (mode === 'white') return '#f6f7f5';
+  if (mode === 'model') return modelColor || '#f6f7f5';
+  return inkFor(id);
+}
+function recolor() {
+  for (const [id, b] of Object.entries(blocks)) {
+    b.group.traverse((o) => { if (o.isMesh && o.userData.modelColor !== undefined) o.material.color.set(colorFor(id, o.userData.modelColor)); });
+  }
+  document.getElementById('color-name').textContent = MODE_NAMES[mode];
+}
+
+// ---------- loading .3dm files
+const rhinoReady = rhino3dm();
+const jsonLoader = new THREE.BufferGeometryLoader();
+const UNIT_TO_M = { 1: 1e-6, 2: 0.001, 3: 0.01, 4: 1, 5: 1000, 8: 0.0254, 9: 0.3048, 10: 1609.344 };
+const blocks = {};   // id -> { url, group, label, publishedAt }
+
+async function buildGroup(id, url) {
+  const rhino = await rhinoReady;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`${res.status} loading ${id}`);
+  const doc = rhino.File3dm.fromByteArray(new Uint8Array(await res.arrayBuffer()));
+  const unit = doc.settings().modelUnitSystem;
+  const scale = UNIT_TO_M[unit && unit.value !== undefined ? unit.value : unit] ?? 1;
+  const group = new THREE.Group();
+  const objects = doc.objects();
+  for (let i = 0; i < objects.count; i++) {
+    const obj = objects.get(i);
+    const geo = obj.geometry();
+    const attrs = obj.attributes();
+    let modelColor = null;
+    try {
+      const src = attrs.colorSource && (attrs.colorSource.value ?? attrs.colorSource);
+      if (src === 1) { const c = attrs.objectColor; modelColor = `rgb(${c.r},${c.g},${c.b})`; }
+    } catch { /* keep default */ }
+
+    if (geo.objectType === rhino.ObjectType.Mesh) {
+      const g = jsonLoader.parse(geo.toThreejsJSON());
+      if (!g.attributes.normal) g.computeVertexNormals();
+      const mat = new THREE.MeshStandardMaterial({ color: colorFor(id, modelColor), roughness: 0.92, metalness: 0,
+        side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
+      const mesh = new THREE.Mesh(g, mat);
+      mesh.castShadow = mesh.receiveShadow = true;
+      mesh.userData.modelColor = modelColor;
+      group.add(mesh);
+      group.add(new THREE.LineSegments(new THREE.EdgesGeometry(g, 28), edgeMat));
+    } else if (geo.objectType === rhino.ObjectType.Curve) {
+      const pts = [];
+      if (typeof geo.point === 'function' && geo.pointCount > 1) {
+        // PolylineCurve (the publish script converts every curve to one)
+        for (let k = 0; k < geo.pointCount; k++) { const p = geo.point(k); pts.push(new THREE.Vector3(p[0], p[1], p[2])); }
+      } else {
+        const [t0, t1] = geo.domain;
+        for (let k = 0; k <= 96; k++) { const p = geo.pointAt(t0 + (t1 - t0) * k / 96); pts.push(new THREE.Vector3(p[0], p[1], p[2])); }
+      }
+      group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), curveMat));
+    }
+    geo.delete?.(); attrs.delete?.(); obj.delete?.();
+  }
+  doc.delete?.();
+  group.scale.setScalar(scale);
+  group.updateMatrixWorld(true);
+  return group;
+}
+
+function disposeGroup(group) {
+  group.traverse((o) => { o.geometry?.dispose(); if (o.material && o.material !== edgeMat && o.material !== curveMat) o.material.dispose(); });
+}
+
+function placeLabel(id, group) {
+  if (id === CONTEXT_ID) return null;
+  const box = new THREE.Box3().setFromObject(group);
+  if (box.isEmpty()) return null;
+  const el = document.createElement('div');
+  el.className = 'label';
+  el.appendChild(Object.assign(document.createElement('span'), { textContent: id }));
+  el.style.setProperty('--c', inkFor(id));
+  el.style.setProperty('--fg', textOn(inkFor(id)));
+  const label = new CSS2DObject(el);
+  label.position.set((box.min.x + box.max.x) / 2, (box.min.y + box.max.y) / 2, box.max.z + 8);
+  label.center.set(0.5, 1);
+  scene.add(label);
+  return label;
+}
+
+function removeBlock(id) {
+  const b = blocks[id];
+  if (!b) return;
+  scene.remove(b.group); disposeGroup(b.group);
+  if (b.label) { scene.remove(b.label); b.label.element.remove(); }
+  delete blocks[id];
+}
+
+// ---------- framing
+function contentBox() {
+  const box = new THREE.Box3();
+  for (const b of Object.values(blocks)) box.expandByObject(b.group);
+  return box;
+}
+function fitShadows(box) {
+  const c = box.getCenter(new THREE.Vector3());
+  const r = Math.max(box.getSize(new THREE.Vector3()).length() / 2, 50);
+  sun.target.position.copy(c);
+  sun.position.copy(c).add(new THREE.Vector3(-0.55, -0.75, 1.05).normalize().multiplyScalar(r * 2.5));
+  const s = sun.shadow.camera;
+  s.left = -r; s.right = r; s.top = r; s.bottom = -r; s.near = 1; s.far = r * 6;
+  s.updateProjectionMatrix();
+  ground.position.set(c.x, c.y, box.min.z - 0.05);
+  ground.scale.set(r * 8, r * 8, 1);
+}
+function fit() {
+  const box = contentBox();
+  if (box.isEmpty()) return;
+  const c = box.getCenter(new THREE.Vector3());
+  const r = box.getSize(new THREE.Vector3()).length() / 2;
+  const dist = r / Math.sin(THREE.MathUtils.degToRad(camera.fov / 2)) * 0.95;
+  controls.target.copy(c);
+  camera.position.copy(c).add(new THREE.Vector3(-0.62, -0.95, 0.85).normalize().multiplyScalar(dist));
+  camera.near = dist / 100; camera.far = dist * 20; camera.updateProjectionMatrix();
+}
+
+// ---------- polling
+let firstLoad = true;
+let lastEvent = null;
+const statusEl = document.getElementById('status');
+
+const clock = (iso) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+function timeAgo(iso) {
+  const s = Math.max(0, (Date.now() - new Date(iso)) / 1000);
+  if (s < 45) return 'just now';
+  if (s < 3600) return `${Math.round(s / 60)} min`;
+  return clock(iso);
+}
+
+function renderKeyplan() {
+  for (const [id, el] of Object.entries(cells)) {
+    const b = blocks[id];
+    el.classList.toggle('on', !!b);
+    el.classList.toggle('fresh', !!b && Date.now() - new Date(b.publishedAt) < FRESH_MS);
+    el.querySelector('small').textContent = b ? timeAgo(b.publishedAt) : '';
+    el.title = b ? `${id} published ${new Date(b.publishedAt).toLocaleTimeString()}` : `${id} not published yet`;
+  }
+  const n = Object.keys(blocks).filter((id) => id !== CONTEXT_ID).length;
+  if (statusEl.classList.contains('error')) return;
+  if (n === 0) statusEl.textContent = 'No blocks yet. Press Publish in Rhino and your block appears here.';
+  else statusEl.textContent = `${n} ${n === 1 ? 'block' : 'blocks'} published.` +
+    (lastEvent ? ` ${lastEvent.id} updated at ${clock(lastEvent.at)}.` : '');
+}
+
+function pulse(id) {
+  const cell = cells[id];
+  if (cell) { cell.classList.remove('pulse'); void cell.offsetWidth; cell.classList.add('pulse'); }
+  const label = blocks[id] && blocks[id].label;
+  if (label) { label.element.classList.remove('pulse'); void label.element.offsetWidth; label.element.classList.add('pulse'); }
+}
+
+let polling = false;
+async function poll() {
+  if (polling) return;
+  polling = true;
+  try {
+    const res = await fetch(STATE_URL, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`Server answered ${res.status}`);
+    const state = await res.json();
+    statusEl.classList.remove('error');
+    const entries = state.blocks || {};
+
+    for (const id of Object.keys(blocks)) if (!entries[id]) removeBlock(id);
+
+    for (const [id, entry] of Object.entries(entries)) {
+      if (blocks[id] && blocks[id].url === entry.url) continue;
+      try {
+        const group = await buildGroup(id, entry.url);
+        const wasThere = !!blocks[id];
+        removeBlock(id);
+        scene.add(group);
+        blocks[id] = { url: entry.url, group, publishedAt: entry.publishedAt, label: placeLabel(id, group) };
+        if (!firstLoad || wasThere) {
+          lastEvent = { id, at: entry.publishedAt };
+          pulse(id);
+        }
+      } catch (err) {
+        console.warn(`Could not load ${id}:`, err);
+      }
+    }
+    if (!lastEvent) {
+      const latest = Object.entries(entries).filter(([id]) => id !== CONTEXT_ID)
+        .sort((a, b) => new Date(b[1].publishedAt) - new Date(a[1].publishedAt))[0];
+      if (latest) lastEvent = { id: latest[0], at: latest[1].publishedAt };
+    }
+    const box = contentBox();
+    if (!box.isEmpty()) {
+      fitShadows(box);
+      if (firstLoad) fit();
+      firstLoad = false;
+    }
+  } catch (err) {
+    statusEl.classList.add('error');
+    statusEl.textContent = `Can't reach the server (${err.message}). Retrying every ${POLL_MS / 1000} s.`;
+  } finally {
+    polling = false;
+    renderKeyplan();
+  }
+}
+
+// ---------- controls
+let resumeTimer;
+const btnRotate = document.getElementById('btn-rotate');
+const btnLabels = document.getElementById('btn-labels');
+btnRotate.setAttribute('aria-pressed', controls.autoRotate);
+let rotateWanted = controls.autoRotate;
+function setRotate(on) { rotateWanted = on; controls.autoRotate = on; btnRotate.setAttribute('aria-pressed', on); }
+function setLabels(on) { document.body.classList.toggle('hide-labels', !on); btnLabels.setAttribute('aria-pressed', on); }
+function nextMode() { mode = MODES[(MODES.indexOf(mode) + 1) % MODES.length]; recolor(); }
+btnRotate.onclick = () => setRotate(!rotateWanted);
+btnLabels.onclick = () => setLabels(btnLabels.getAttribute('aria-pressed') !== 'true');
+document.getElementById('btn-color').onclick = nextMode;
+document.getElementById('btn-fit').onclick = fit;
+addEventListener('keydown', (e) => {
+  if (e.target.closest('button') && (e.key === 'Enter' || e.key === ' ')) return;
+  const k = e.key.toLowerCase();
+  if (k === 'r') setRotate(!rotateWanted);
+  else if (k === 'c') nextMode();
+  else if (k === 'l') btnLabels.click();
+  else if (k === 'f') fit();
+});
+// pause the slow orbit while someone is steering, resume after 20 s
+controls.addEventListener('start', () => { controls.autoRotate = false; clearTimeout(resumeTimer); });
+controls.addEventListener('end', () => { resumeTimer = setTimeout(() => { controls.autoRotate = rotateWanted; }, 20000); });
+
+renderer.setAnimationLoop(() => {
+  controls.update();
+  renderer.render(scene, camera);
+  labelRenderer.render(scene, camera);
+});
+
+poll();
+setInterval(poll, POLL_MS);
+setInterval(renderKeyplan, 15000);
+</script>
+</body>
+</html>

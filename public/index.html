@@ -9,36 +9,100 @@
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..800&display=swap" rel="stylesheet">
 <style>
   :root {
-    --paper: #ffffff;
+    --ground: #dde2e6;   /* board */
+    --paper: #f6f7f5;    /* controls */
     --ink: #1e232a;
     --muted: #66707b;
     --rule: #a9b2bb;
+    --cell: 58px;
+    --gap: 7px;
+    --edge: 32px;
   }
   * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--paper); color: var(--ink);
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--ground); color: var(--ink);
     font-family: 'Archivo', system-ui, sans-serif; font-variation-settings: 'wdth' 100; }
   #view { position: fixed; inset: 0; }
   #view canvas { display: block; }
+  button { font: inherit; color: inherit; }
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 
-  .title { position: fixed; top: 28px; left: 32px; max-width: min(56ch, 70vw); pointer-events: none; }
+  /* top: title on the left, view switcher on the right */
+  .top { position: fixed; top: 28px; left: var(--edge); right: var(--edge); display: flex; gap: 20px 32px;
+    justify-content: space-between; align-items: flex-start; flex-wrap: wrap; pointer-events: none; }
+  .title { max-width: min(56ch, 60vw); }
   .title h1 { margin: 0; font-size: clamp(22px, 2.6vw, 38px); line-height: 1.05; font-weight: 750;
     font-variation-settings: 'wdth' 125; letter-spacing: -0.01em; }
   .title p { margin: 10px 0 0; font-size: clamp(14px, 1.15vw, 18px); line-height: 1.4; color: var(--muted); }
   .title p.error { color: #b3261e; }
 
-  .keys { position: fixed; right: 32px; bottom: 28px; font-size: 13px; color: var(--muted); text-align: right; line-height: 1.7; }
-  .keys button { font: inherit; color: var(--ink); background: var(--paper); border: 1px solid var(--rule);
-    border-radius: 3px; padding: 3px 9px; margin-left: 6px; cursor: pointer; }
+  .controls { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; pointer-events: auto; }
+  .views { display: flex; padding: 3px; gap: 2px; background: var(--paper); border: 1px solid var(--rule); border-radius: 7px; }
+  .views button { border: 0; background: none; padding: 8px 14px 7px; border-radius: 5px; cursor: pointer;
+    font-size: 15px; font-weight: 650; white-space: nowrap; }
+  .views button kbd { font: inherit; font-size: 11px; font-weight: 600; color: var(--muted); margin-right: 6px; }
+  .views button:hover { background: #e8ebec; }
+  .views button[aria-selected="true"] { background: var(--ink); color: var(--paper); }
+  .views button[aria-selected="true"] kbd { color: #a9b2bb; }
+
+  .context { display: flex; align-items: center; gap: 12px; min-height: 46px; padding: 8px 14px;
+    background: var(--paper); border: 1px solid var(--rule); border-radius: 7px; font-size: 14px; }
+  .context[hidden] { display: none; }
+  .context label { font-weight: 650; }
+  .context input[type=range] { width: min(220px, 40vw); accent-color: var(--ink); }
+  .context output { font-variant-numeric: tabular-nums; min-width: 3.2ch; color: var(--muted); font-weight: 600; }
+  .context .step { width: 30px; height: 30px; border: 1px solid var(--rule); background: #fff; border-radius: 5px;
+    cursor: pointer; font-size: 18px; line-height: 1; }
+  .context .step:hover { background: #e8ebec; }
+  .context .who { min-width: 13ch; text-align: center; }
+  .context .who b { display: block; font-size: 17px; font-weight: 780; font-variation-settings: 'wdth' 125; }
+  .context .who small { color: var(--muted); }
+
+  /* bottom: group chips on the left, display keys on the right */
+  .bottom { position: fixed; bottom: 28px; left: var(--edge); right: var(--edge); display: flex; gap: 16px;
+    justify-content: space-between; align-items: flex-end; flex-wrap: wrap; pointer-events: none; }
+  .groups { display: grid; grid-template-columns: repeat(var(--n, 8), var(--cell)); grid-auto-rows: var(--cell);
+    gap: var(--gap); pointer-events: auto; }
+  .cell { position: relative; padding: 0; border: 1.5px dashed var(--rule); border-radius: 4px; background: none;
+    display: flex; flex-direction: column; justify-content: center; align-items: center; color: var(--muted); cursor: pointer; }
+  .cell b { font-size: 17px; font-weight: 780; font-variation-settings: 'wdth' 125; line-height: 1; }
+  .cell small { font-size: 11px; margin-top: 4px; font-weight: 500; opacity: .85; white-space: nowrap; }
+  .cell.on { border: 0; background: var(--c); color: var(--fg, var(--ink)); }
+  .cell:hover { transform: translateY(-2px); }
+  .cell[aria-current="true"] { outline: 2.5px solid var(--ink); outline-offset: 3px; }
+  .cell.fresh::before { content: ''; position: absolute; top: -4px; right: -4px; width: 10px; height: 10px;
+    border-radius: 50%; background: var(--ink); border: 2px solid var(--ground); }
+  .cell.pulse::after { content: ''; position: absolute; inset: -5px; border: 2.5px solid var(--ink); border-radius: 7px;
+    animation: ring 1.6s ease-out 2 forwards; }
+  @keyframes ring { 0% { transform: scale(1.18); opacity: 0; } 35% { opacity: 1; } 100% { transform: scale(1); opacity: 0; } }
+
+  .keys { font-size: 13px; color: var(--muted); text-align: right; line-height: 1.7; pointer-events: auto; }
+  .keys button { color: var(--ink); background: var(--paper); border: 1px solid var(--rule);
+    border-radius: 4px; padding: 3px 9px; margin-left: 6px; cursor: pointer; }
   .keys button[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
-  .keys button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
   .keys kbd { font: inherit; font-weight: 700; }
 
-  @media (max-width: 700px) {
-    .title { top: 16px; left: 16px; }
-    .keys { right: 16px; bottom: 16px; }
-    .keys button { display: block; margin: 6px 0 0 auto; }
-    .keys .hint { display: none; }
+  /* labels floating in the 3D view */
+  .label { opacity: 0; transition: opacity .35s; }
+  .label.show { opacity: 1; }
+  .hide-labels .label { opacity: 0; }
+  .label span { display: block; padding: 5px 9px 4px; border-radius: 4px; background: var(--c); color: var(--fg, var(--ink));
+    font: 780 15px/1 'Archivo', sans-serif; font-variation-settings: 'wdth' 125; white-space: nowrap;
+    box-shadow: 0 1px 0 rgba(30,35,42,.25); }
+  .label.empty span { background: none; color: var(--muted); box-shadow: none; border: 1.5px dashed var(--rule); font-weight: 650; }
+  .label.empty span small { font-weight: 500; }
+  .label.pulse span { animation: lift 1.6s ease-out 2; }
+  @keyframes lift { 0% { transform: translateY(-14px) scale(1.25); } 100% { transform: none; } }
+
+  @media (max-width: 760px) {
+    :root { --cell: 40px; --gap: 5px; --edge: 16px; }
+    .top { top: 16px; }
+    .title { max-width: none; }
+    .controls { align-items: stretch; width: 100%; }
+    .views button { flex: 1; padding: 8px 4px 7px; font-size: 14px; }
+    .views button kbd, .keys .hint, .cell small { display: none; }
+    .bottom { bottom: 16px; }
   }
+  @media (prefers-reduced-motion: reduce) { .cell.pulse::after, .label.pulse span { animation: none; } }
 </style>
 <script type="importmap">
 {
@@ -53,96 +117,141 @@
 <body>
 <div id="view"></div>
 
-<header class="title">
-  <h1 id="title">Cube workshop</h1>
-  <p id="status" role="status">Connecting…</p>
-</header>
+<div class="top">
+  <header class="title">
+    <h1 id="title">Cube workshop</h1>
+    <p id="status" role="status">Connecting…</p>
+  </header>
+  <div class="controls">
+    <div class="views" role="tablist" aria-label="View">
+      <button role="tab" data-view="combined"><kbd>1</kbd>Combined</button>
+      <button role="tab" data-view="exploded"><kbd>2</kbd>Exploded</button>
+      <button role="tab" data-view="single"><kbd>3</kbd>One by one</button>
+      <button role="tab" data-view="matrix"><kbd>4</kbd>Matrix</button>
+    </div>
+    <div class="context" id="ctx-exploded" hidden>
+      <label for="separation">Separation</label>
+      <input id="separation" type="range" min="0" max="3" step="0.05" value="1">
+      <output id="separation-value" for="separation">1.0×</output>
+    </div>
+    <div class="context" id="ctx-single" hidden>
+      <button class="step" id="prev" aria-label="Previous group" title="Previous group (←)">‹</button>
+      <div class="who" aria-live="polite"><b id="single-name">Group 1</b><small id="single-time"></small></div>
+      <button class="step" id="next" aria-label="Next group" title="Next group (→)">›</button>
+    </div>
+  </div>
+</div>
 
-<div class="keys">
-  <span class="hint">Drag to orbit, scroll to zoom</span><br>
-  <button id="btn-spin" aria-pressed="false" title="Slowly turn each model on its plate (R)"><kbd>R</kbd> Spin</button>
-  <button id="btn-color" title="Switch colors: model, groups, white (C)"><kbd>C</kbd> <span id="color-name">Model colors</span></button>
-  <button id="btn-labels" aria-pressed="true" title="Show plate labels (L)"><kbd>L</kbd> Labels</button>
-  <button id="btn-fit" title="Frame all views (F)"><kbd>F</kbd> Fit</button>
+<div class="bottom">
+  <nav class="groups" id="groups" aria-label="Groups: click one to view it on its own"></nav>
+  <div class="keys">
+    <span class="hint">Drag to orbit, scroll to zoom, click a cube to open it</span><br>
+    <button id="btn-rotate" aria-pressed="true" title="Slowly orbit the model (R)"><kbd>R</kbd> Rotate</button>
+    <button id="btn-color" title="Switch colors: model, groups, white (C)"><kbd>C</kbd> <span id="color-name">Model colors</span></button>
+    <button id="btn-labels" aria-pressed="true" title="Show group labels (L)"><kbd>L</kbd> Labels</button>
+    <button id="btn-fit" title="Frame the view (F)"><kbd>F</kbd> Fit</button>
+  </div>
 </div>
 
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import rhino3dm from 'rhino3dm';
 
-// ---------- settings (override with URL parameters, e.g. ?title=Studio%20B&groups=8&explode=1&poll=5)
+// ---------- settings (URL parameters, e.g. ?title=Studio%20B&groups=8&explode=1.5&view=matrix&poll=5)
 const params = new URLSearchParams(location.search);
 const TITLE = params.get('title') || 'Cube workshop';
 const POLL_MS = Math.max(3, Number(params.get('poll')) || 5) * 1000;
 const GROUPS = Math.max(1, Math.min(24, Math.round(Number(params.get('groups'))) || 8));
-const EXPLODE = params.has('explode') ? Math.max(0, Number(params.get('explode')) || 0) : 1;
 const STATE_URL = params.get('api') || '/api/state';
 const FRESH_MS = 90 * 1000;
+const VIEWS = ['combined', 'exploded', 'single', 'matrix'];
 
 document.getElementById('title').textContent = TITLE;
 document.title = TITLE;
 
-// Groups 1–8 get the colours from the reference Rhino file; any further groups get distinct inks.
+// Groups 1–8 use the colours of the reference Rhino file; further groups get distinct inks.
 const GROUP_COLORS = ['#b4b4b4', '#d8d800', '#1fd41f', '#0c3a0c', '#e00000', '#d93636', '#00dede', '#a43ee0'];
 const EXTRA_COLORS = ['#ff48b0', '#0078bf', '#ff6c2f', '#765ba7', '#00838a', '#ffb511', '#62a8e5', '#bb8b41'];
-const WHITE = '#f4f4f2';
-const INK = '#1e232a', MUTED = '#8a929b';
+const WHITE = '#f6f7f5';
 
-// Published block IDs "3", "G3", "GROUP3", "Group-3" all mean group 3.
+// Published IDs "3", "G3", "GROUP3", "Group-3" all mean group 3.
 function groupNumber(id) {
   const m = /^(?:GROUP|GRP|G)?[-_]?(\d{1,3})$/.exec(id);
   return m ? Number(m[1]) : null;
 }
-function groupColor(id) {
-  const n = groupNumber(id);
+function groupColor(key) {
+  const n = groupNumber(key);
   if (n && n <= GROUP_COLORS.length) return GROUP_COLORS[n - 1];
   if (n) return EXTRA_COLORS[(n - 1) % EXTRA_COLORS.length];
-  let h = 0; for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  let h = 0; for (const ch of key) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
   return EXTRA_COLORS[h % EXTRA_COLORS.length];
 }
+function textOn(color) {
+  const c = new THREE.Color(color);
+  return 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b > 0.18 ? '#1e232a' : '#ffffff';
+}
+
+// ---------- state
+let view = VIEWS.includes(params.get('view')) ? params.get('view') : 'combined';
+let selected = '1';          // slot key shown in "One by one"
+let explode = params.has('explode') ? Math.max(0, Math.min(3, Number(params.get('explode')) || 0)) : 1;
+{
+  const [v, g] = location.hash.slice(1).split('-');
+  if (VIEWS.includes(v)) view = v;
+  if (g) selected = decodeURIComponent(g);
+}
+const blocks = {};           // id -> { url, raw, holder, box, center, size, modelColor, publishedAt }
+let slotList = [];           // [{ key, id, short, name }]
 
 // ---------- 3D scene (Rhino is Z-up)
 THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
-const view = document.getElementById('view');
+const viewEl = document.getElementById('view');
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-view.appendChild(renderer.domElement);
-const MAX_ANISO = renderer.capabilities.getMaxAnisotropy();
+viewEl.appendChild(renderer.domElement);
+const labelRenderer = new CSS2DRenderer();
+labelRenderer.domElement.style.cssText = 'position:absolute;inset:0;pointer-events:none';
+viewEl.appendChild(labelRenderer.domElement);
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color('#ffffff');
+scene.background = new THREE.Color('#dde2e6');
 const camera = new THREE.PerspectiveCamera(28, 1, 0.1, 20000);
 camera.up.set(0, 0, 1);
-camera.position.set(20, -60, 40);
+camera.position.set(-12.4, -19, 17); // same direction as DEFAULT_DIR below
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
+controls.autoRotate = !matchMedia('(prefers-reduced-motion: reduce)').matches;
+controls.autoRotateSpeed = 0.35;
 controls.maxPolarAngle = Math.PI * 0.49;
 
-// Light from the front-left, like Rhino's default: top and front faces bright, the far sides dark.
-scene.add(new THREE.HemisphereLight('#ffffff', '#5a5f66', 0.75));
-const sun = new THREE.DirectionalLight('#ffffff', 2.4);
+scene.add(new THREE.HemisphereLight('#ffffff', '#b9c0c8', 1.7));
+const sun = new THREE.DirectionalLight('#ffffff', 2.2);
 sun.castShadow = true;
 sun.shadow.mapSize.set(4096, 4096);
 sun.shadow.bias = -0.0004;
-sun.shadow.radius = 4;
 scene.add(sun, sun.target);
-const ground = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.ShadowMaterial({ opacity: 0.13 }));
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.ShadowMaterial({ opacity: 0.16 }));
 ground.receiveShadow = true;
 scene.add(ground);
 
-const edgeMat = new THREE.LineBasicMaterial({ color: '#111111' });
-const curveMat = new THREE.LineBasicMaterial({ color: '#111111' });
-const plateMat = new THREE.LineBasicMaterial({ color: INK });
+const edgeMat = new THREE.LineBasicMaterial({ color: '#1e232a', transparent: true, opacity: 0.55 });
+const curveMat = new THREE.LineBasicMaterial({ color: '#1e232a', transparent: true, opacity: 0.75 });
+// Matrix tiles fade in and out with the view.
+const tileMat = new THREE.MeshLambertMaterial({ color: '#eef0f1', transparent: true, opacity: 0, depthWrite: false });
+const dashMat = new THREE.LineDashedMaterial({ color: '#8f99a3', transparent: true, opacity: 0 });
+const decor = new THREE.Group();
+scene.add(decor);
 
 function resize() {
   const w = innerWidth, h = innerHeight;
-  renderer.setSize(w, h);
+  renderer.setSize(w, h); labelRenderer.setSize(w, h);
   camera.aspect = w / h; camera.updateProjectionMatrix();
 }
-addEventListener('resize', resize); resize();
+resize();
 
 // ---------- colour modes
 const MODES = ['model', 'groups', 'white'];
@@ -153,39 +262,43 @@ function colorFor(id, modelColor) {
   if (mode === 'model' && modelColor) return modelColor;
   return groupColor(id);
 }
+// Colour of a group's chip and label: its model's colour, or the group colour.
+function chipColor(slot) {
+  const b = slot.id && blocks[slot.id];
+  if (!b || mode === 'white') return groupColor(slot.key);
+  return colorFor(slot.id, b.modelColor);
+}
 function recolor() {
   for (const [id, b] of Object.entries(blocks)) {
-    b.raw.traverse((o) => { if (o.isMesh && o.userData.modelColor !== undefined) o.material.color.set(colorFor(id, o.userData.modelColor)); });
+    b.raw.traverse((o) => { if (o.isMesh) o.material.color.set(colorFor(id, o.userData.modelColor)); });
   }
   document.getElementById('color-name').textContent = MODE_NAMES[mode];
-  rebuildLayout(); // fresh-plate tints follow the colours
+  layout();
+  renderGroups();
 }
 
 // ---------- loading .3dm files
 const rhinoReady = rhino3dm();
 const jsonLoader = new THREE.BufferGeometryLoader();
 const UNIT_TO_M = { 1: 1e-6, 2: 0.001, 3: 0.01, 4: 1, 5: 1000, 8: 0.0254, 9: 0.3048, 10: 1609.344 };
-const blocks = {};   // id -> { url, raw, box, publishedAt }  (raw is never in the scene; the views use clones)
-
 const enumValue = (e) => (e && e.value !== undefined ? e.value : e);
 const rgb = (c) => `rgb(${c.r},${c.g},${c.b})`;
 
-// The colour the object shows in Rhino: object colour, layer colour or material colour.
+// The colour the object shows in Rhino: object colour, material colour, or layer colour.
 function modelColorOf(doc, attrs) {
   try {
     const src = enumValue(attrs.colorSource);
     if (src === 1) return rgb(attrs.objectColor);
-    if (src === 2) {
-      const m = attrs.materialIndex >= 0 ? doc.materials().get(attrs.materialIndex) : null;
+    if (src === 2 && attrs.materialIndex >= 0) {
+      const m = doc.materials().get(attrs.materialIndex);
       if (m) { const c = m.diffuseColor; m.delete?.(); return rgb(c); }
     }
     const layer = doc.layers().get(attrs.layerIndex);
     if (layer) {
       const c = layer.color; layer.delete?.();
-      // Rhino's default layer is black; treat that as "no colour chosen".
-      if (c && (c.r || c.g || c.b)) return rgb(c);
+      if (c && (c.r || c.g || c.b)) return rgb(c); // Rhino's default black layer counts as "no colour"
     }
-  } catch { /* fall back to the group colour */ }
+  } catch { /* use the group colour */ }
   return null;
 }
 
@@ -194,20 +307,22 @@ async function buildGroup(id, url) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`${res.status} loading ${id}`);
   const doc = rhino.File3dm.fromByteArray(new Uint8Array(await res.arrayBuffer()));
-  const unit = doc.settings().modelUnitSystem;
-  const scale = UNIT_TO_M[enumValue(unit)] ?? 1;
+  const scale = UNIT_TO_M[enumValue(doc.settings().modelUnitSystem)] ?? 1;
   const group = new THREE.Group();
+  let firstColor;
 
   function addMesh(rmesh, modelColor) {
     const g = jsonLoader.parse(rmesh.toThreejsJSON());
     if (!g.attributes.normal) g.computeVertexNormals();
-    const mat = new THREE.MeshStandardMaterial({ color: colorFor(id, modelColor), roughness: 0.95, metalness: 0,
+    const mat = new THREE.MeshStandardMaterial({ color: colorFor(id, modelColor), roughness: 0.92, metalness: 0,
       side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
     const mesh = new THREE.Mesh(g, mat);
     mesh.castShadow = mesh.receiveShadow = true;
     mesh.userData.modelColor = modelColor;
+    mesh.userData.blockId = id;
     group.add(mesh);
     group.add(new THREE.LineSegments(new THREE.EdgesGeometry(g, 28), edgeMat));
+    if (firstColor === undefined) firstColor = modelColor;
   }
 
   const objects = doc.objects();
@@ -221,15 +336,11 @@ async function buildGroup(id, url) {
       if (type === rhino.ObjectType.Mesh) {
         addMesh(geo, modelColor);
       } else if (type === rhino.ObjectType.Extrusion) {
-        const m = geo.getMesh(rhino.MeshType.Any); // only present if Rhino saved render meshes
+        const m = geo.getMesh(rhino.MeshType.Any); // only there if Rhino saved render meshes
         if (m) addMesh(m, modelColor);
       } else if (type === rhino.ObjectType.Brep) {
         const faces = geo.faces();
-        for (let f = 0; f < faces.count; f++) {
-          const face = faces.get(f);
-          const m = face.getMesh(rhino.MeshType.Any);
-          if (m) addMesh(m, modelColor);
-        }
+        for (let f = 0; f < faces.count; f++) { const m = faces.get(f).getMesh(rhino.MeshType.Any); if (m) addMesh(m, modelColor); }
       } else if (type === rhino.ObjectType.Curve) {
         const pts = [];
         if (typeof geo.point === 'function' && geo.pointCount > 1) {
@@ -248,269 +359,324 @@ async function buildGroup(id, url) {
   doc.delete?.();
   group.scale.setScalar(scale);
   group.updateMatrixWorld(true);
-  return group;
+  return { raw: group, modelColor: firstColor ?? null };
 }
 
-function disposeGroup(group) {
-  group.traverse((o) => { o.geometry?.dispose(); if (o.material && o.material !== edgeMat && o.material !== curveMat) o.material.dispose(); });
+// Each model hangs in a holder placed at the model's centre, so the views can move
+// and scale every piece around its own centre.
+function addBlock(id, entry, raw, modelColor) {
+  const box = new THREE.Box3().setFromObject(raw);
+  const center = box.isEmpty() ? new THREE.Vector3() : box.getCenter(new THREE.Vector3());
+  const size = box.isEmpty() ? new THREE.Vector3() : box.getSize(new THREE.Vector3());
+  raw.position.copy(center).negate();
+  const holder = new THREE.Group();
+  holder.add(raw);
+  holder.scale.setScalar(0.001);   // grows in
+  holder.userData = { target: new THREE.Vector3(), scale: 1, snap: true };
+  scene.add(holder);
+  blocks[id] = { url: entry.url, raw, holder, box, center, size, modelColor, publishedAt: entry.publishedAt };
+}
+function removeBlock(id) {
+  const b = blocks[id];
+  if (!b) return;
+  scene.remove(b.holder);
+  b.raw.traverse((o) => { o.geometry?.dispose(); if (o.material && o.material !== edgeMat && o.material !== curveMat) o.material.dispose(); });
+  delete blocks[id];
 }
 
-// ---------- the board: Combined, Combined exploded, and one plate per group
-//
-//   ┌──────────┐      ┌──────────┐
-//   │ combined │      │ exploded │
-//   └──────────┘      └──────────┘
-//   ┌────┬────┬────┬────┬────┬────┬────┬────┐
-//   │ G1 │ G2 │ G3 │ G4 │ G5 │ G6 │ G7 │ G8 │
-//   └────┴────┴────┴────┴────┴────┴────┴────┘
-//
-// Combined keeps every group at its real Rhino coordinates. Exploded pushes each group away from
-// the centre of the combined model by EXPLODE × its distance. The strip shows each group alone.
-const board = new THREE.Group();
-scene.add(board);
-let spinners = [];
-let spinAngle = 0;
-let showLabels = true;
-let lastBounds = null;
-let nominal = 3; // size of one piece before anything is published (metres)
-
-function slots() {
-  const list = [];
+// ---------- slots: Group 1..N, plus any other published IDs
+function computeSlots() {
   const byNumber = {};
   for (const [id, b] of Object.entries(blocks)) {
     const n = groupNumber(id);
-    if (n && n >= 1 && n <= GROUPS) {
-      // two IDs for the same group (e.g. "3" and "G3"): show the newer one
-      if (!byNumber[n] || new Date(b.publishedAt) > new Date(blocks[byNumber[n]].publishedAt)) byNumber[n] = id;
-    }
+    if (n && n >= 1 && n <= GROUPS && (!byNumber[n] || new Date(b.publishedAt) > new Date(blocks[byNumber[n]].publishedAt))) byNumber[n] = id;
   }
-  for (let n = 1; n <= GROUPS; n++) list.push({ label: `Group ${n}`, id: byNumber[n] || null, key: String(n) });
-  const extras = Object.keys(blocks).filter((id) => { const n = groupNumber(id); return !(n && n >= 1 && n <= GROUPS); }).sort();
-  for (const id of extras) list.push({ label: groupNumber(id) ? `Group ${groupNumber(id)}` : id, id, key: id });
+  const list = [];
+  for (let n = 1; n <= GROUPS; n++) list.push({ key: String(n), id: byNumber[n] || null, short: String(n), name: `Group ${n}` });
+  for (const id of Object.keys(blocks).sort()) {
+    const n = groupNumber(id);
+    if (n && n >= 1 && n <= GROUPS) continue;
+    list.push({ key: id, id, short: n ? String(n) : id, name: n ? `Group ${n}` : id });
+  }
   return list;
 }
 
-function clearBoard() {
-  board.traverse((o) => {
-    if (!o.userData.own) return;
-    o.geometry?.dispose();
-    if (o.material && o.material !== plateMat) { o.material.map?.dispose(); o.material.dispose(); }
-  });
-  board.clear();
-  spinners = [];
-}
-
-function outline(x0, y0, w, h, z) {
-  const pts = [[x0, y0], [x0 + w, y0], [x0 + w, y0 + h], [x0, y0 + h]].map(([x, y]) => new THREE.Vector3(x, y, z));
-  const line = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), plateMat);
-  line.userData.own = true;
-  return line;
-}
-
-// Text lying flat on the board at the plate's front-left corner, like a Rhino text object.
-function groundText(lines, x0, y0, height, z) {
-  const PX = 96;
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
-  const fonts = lines.map((l) => `${l.weight || 700} ${Math.round(PX * (l.size || 1))}px Archivo, system-ui, sans-serif`);
-  let w = 0;
-  lines.forEach((l, i) => { ctx.font = fonts[i]; w = Math.max(w, ctx.measureText(l.text).width); });
-  const lineH = lines.map((l) => PX * (l.size || 1) * 1.25);
-  canvas.width = Math.ceil(w + PX * 0.2);
-  canvas.height = Math.ceil(lineH.reduce((a, b) => a + b, 0) + PX * 0.1);
-  let y = 0;
-  lines.forEach((l, i) => {
-    ctx.font = fonts[i]; ctx.fillStyle = l.color || INK; ctx.textBaseline = 'top';
-    ctx.fillText(l.text, PX * 0.04, y + PX * 0.08);
-    y += lineH[i];
-  });
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.anisotropy = MAX_ANISO;
-  const unit = height / PX;
-  const pw = canvas.width * unit, ph = canvas.height * unit;
-  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(pw, ph),
-    new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false }));
-  mesh.position.set(x0 + pw / 2, y0 - ph / 2, z);
-  mesh.userData.own = true;
-  mesh.userData.label = true;
-  mesh.visible = showLabels;
-  return mesh;
-}
-
-// A plate with its outline, label and a turntable pivot at its centre. Returns the pivot.
-function plate(x0, y0, w, h, lines, tint, unit) {
-  const z = unit * 0.002;
-  board.add(outline(x0, y0, w, h, z));
-  board.add(groundText(lines, x0 - unit * 0.05, y0 - unit * 0.05, unit * 0.13, z));
-  if (tint) {
-    const fill = new THREE.Mesh(new THREE.PlaneGeometry(w, h),
-      new THREE.MeshBasicMaterial({ color: tint, transparent: true, opacity: 0.16, depthWrite: false }));
-    fill.position.set(x0 + w / 2, y0 + h / 2, z * 0.5);
-    fill.userData.own = true;
-    board.add(fill);
+// ---------- labels (one per slot, floating in the 3D view)
+const labels = {};  // key -> CSS2DObject
+function labelFor(slot) {
+  let l = labels[slot.key];
+  if (!l) {
+    const el = document.createElement('div');
+    el.className = 'label';
+    el.appendChild(document.createElement('span'));
+    l = new CSS2DObject(el);
+    l.userData.target = new THREE.Vector3();
+    scene.add(l);
+    labels[slot.key] = l;
   }
-  const pivot = new THREE.Group();
-  pivot.position.set(x0 + w / 2, y0 + h / 2, 0);
-  pivot.rotation.z = spinAngle;
-  board.add(pivot);
-  spinners.push(pivot);
-  return pivot;
+  return l;
 }
 
-// Put a clone of a block's model on a pivot so that `anchor` (a world point of the model) lands on the pivot.
-function placeClone(pivot, b, anchor) {
-  const c = b.raw.clone();
-  c.position.set(-anchor.x, -anchor.y, -anchor.z);
-  pivot.add(c);
-}
+// ---------- layout: where every piece goes in the current view
+let nominal = 3;        // size of one piece before anything is published
+let currentBounds = new THREE.Box3(new THREE.Vector3(-3, -3, 0), new THREE.Vector3(3, 3, 3));
 
-function timeAgo(iso) {
-  const s = Math.max(0, (Date.now() - new Date(iso)) / 1000);
-  if (s < 45) return 'just now';
-  if (s < 3600) return `${Math.round(s / 60)} min ago`;
-  return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-}
+function layout() {
+  slotList = computeSlots();
+  if (!slotList.some((s) => s.key === selected)) selected = (slotList.find((s) => s.id) || slotList[0]).key;
+  const placed = slotList.filter((s) => s.id && !blocks[s.id].box.isEmpty());
 
-function rebuildLayout() {
-  clearBoard();
-  const list = slots();
-  const placed = list.filter((s) => s.id && !blocks[s.id].box.isEmpty());
-
-  // Size of one cell: big enough for the widest single piece.
   let piece = 0;
-  for (const s of placed) { const sz = blocks[s.id].box.getSize(new THREE.Vector3()); piece = Math.max(piece, sz.x, sz.y); }
+  for (const s of placed) { const z = blocks[s.id].size; piece = Math.max(piece, z.x, z.y); }
   if (piece > 0) nominal = piece;
-  const C = nominal * 1.9;
 
-  // Combined model and its exploded version.
+  // Combined: real Rhino positions, centred on the origin, standing on the ground.
   const combined = new THREE.Box3();
   for (const s of placed) combined.union(blocks[s.id].box);
-  const centre = combined.isEmpty() ? new THREE.Vector3() : combined.getCenter(new THREE.Vector3());
-  const offsets = {};
-  const exploded = new THREE.Box3();
-  for (const s of placed) {
-    const box = blocks[s.id].box;
-    offsets[s.id] = box.getCenter(new THREE.Vector3()).sub(centre).multiplyScalar(EXPLODE);
-    exploded.union(box.clone().translate(offsets[s.id]));
-  }
-  let extent = 0;
-  for (const bx of [combined, exploded]) if (!bx.isEmpty()) { const sz = bx.getSize(new THREE.Vector3()); extent = Math.max(extent, sz.x, sz.y); }
-  const P = Math.max(extent * 1.4, C * 2);
-
-  // Positions on the board (x to the right, y away from the viewer, z up).
-  const stripW = list.length * C;
-  const topY = C + C * 1.2;
-  const x1 = Math.max(stripW * 0.27 - P / 2, 0);
-  const x2 = Math.max(stripW * 0.69 - P / 2, x1 + P + C * 0.8);
-
-  const now = Date.now();
-  const freshTint = (id) => (id && now - new Date(blocks[id].publishedAt) < FRESH_MS ? colorFor(id, firstModelColor(id)) : null);
-
-  // Combined
-  const pc = plate(x1, topY, P, P, [{ text: 'Combined' }], null, C);
-  for (const s of placed) placeClone(pc, blocks[s.id], new THREE.Vector3(centre.x, centre.y, combined.min.z));
-
-  // Combined exploded
-  const pe = plate(x2, topY, P, P, [{ text: 'Combined exploded' }], null, C);
-  if (!exploded.isEmpty()) {
-    const ec = exploded.getCenter(new THREE.Vector3());
+  const cc = combined.isEmpty() ? new THREE.Vector3() : combined.getCenter(new THREE.Vector3());
+  const base = new THREE.Vector3(cc.x, cc.y, combined.isEmpty() ? 0 : combined.min.z);
+  // Exploded: push each piece away from the centre by `explode` × its distance, then put the lowest back on the ground.
+  let lift = 0;
+  if (placed.length) {
+    lift = Infinity;
     for (const s of placed) {
-      const o = offsets[s.id];
-      placeClone(pe, blocks[s.id], new THREE.Vector3(ec.x - o.x, ec.y - o.y, exploded.min.z - o.z));
+      const b = blocks[s.id];
+      lift = Math.min(lift, b.center.z - base.z - b.size.z / 2 + (b.center.z - cc.z) * explode);
     }
+    lift = -lift;
+  }
+  // Matrix: a grid of cells, reading left to right, back to front.
+  const n = slotList.length;
+  const portrait = camera.aspect < 1;
+  const cols = portrait ? Math.min(n, 2) : n <= 4 ? n : n <= 10 ? Math.ceil(n / 2) : Math.ceil(Math.sqrt(n * 1.6));
+  const rows = Math.ceil(n / cols);
+  const C = nominal * 2.1;
+  const cell = (i) => new THREE.Vector3((i % cols - (cols - 1) / 2) * C, ((rows - 1) / 2 - Math.floor(i / cols)) * C, 0);
+
+  const bounds = new THREE.Box3();
+  slotList.forEach((s, i) => {
+    const b = s.id && blocks[s.id];
+    const label = labelFor(s);
+    const c = cell(i);
+    let show = false;
+    if (b && !b.box.isEmpty()) {
+      const half = b.size.z / 2;
+      const inCombined = b.center.clone().sub(base);
+      let target = inCombined, scale = 1;
+      if (view === 'exploded') { target = inCombined.clone().addScaledVector(b.center.clone().sub(cc), explode); target.z += lift; }
+      else if (view === 'matrix') target = c.clone().setZ(half);
+      else if (view === 'single') { if (s.key === selected) target = new THREE.Vector3(0, 0, half); else scale = 0; }
+      const h = b.holder.userData;
+      h.target.copy(target); h.scale = scale;
+      if (h.snap) { b.holder.position.copy(target); h.snap = false; }
+      if (scale) bounds.union(new THREE.Box3().setFromCenterAndSize(target, b.size));
+      if (view === 'exploded') { label.userData.target.copy(target).setZ(target.z + half + nominal * 0.08); label.center.set(0.5, 1); show = true; }
+    }
+    if (view === 'matrix') { label.userData.target.copy(c).setY(c.y - C * 0.4); label.center.set(0.5, -0.25); show = true; }
+    if (!label.userData.placed) { label.position.copy(label.userData.target); label.userData.placed = true; }
+    const el = label.element;
+    el.classList.toggle('show', show);
+    el.classList.toggle('empty', !b);
+    el.style.setProperty('--c', chipColor(s));
+    el.style.setProperty('--fg', textOn(chipColor(s)));
+    el.firstChild.innerHTML = '';
+    el.firstChild.append(view === 'matrix' ? s.name : s.short);
+    if (view === 'matrix' && !b) el.firstChild.append(Object.assign(document.createElement('small'), { textContent: ' · waiting' }));
+  });
+  for (const key of Object.keys(labels)) {
+    if (!slotList.some((s) => s.key === key)) { scene.remove(labels[key]); labels[key].element.remove(); delete labels[key]; }
   }
 
-  // One plate per group
-  list.forEach((s, i) => {
-    const b = s.id && blocks[s.id];
-    const lines = [{ text: s.label, color: b ? INK : MUTED },
-      { text: b ? timeAgo(b.publishedAt) : 'not published yet', size: 0.7, weight: 500, color: MUTED }];
-    const p = plate(i * C, 0, C, C, lines, freshTint(s.id), C);
-    if (b && !b.box.isEmpty()) {
-      const bc = b.box.getCenter(new THREE.Vector3());
-      placeClone(p, b, new THREE.Vector3(bc.x, bc.y, b.box.min.z));
+  // Matrix tiles: solid for published groups, dashed outline for the rest.
+  decor.traverse((o) => o.geometry?.dispose());
+  decor.clear();
+  const tile = C * 0.8, z = nominal * 0.002;
+  slotList.forEach((s, i) => {
+    const c = cell(i);
+    if (s.id) {
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(tile, tile), tileMat);
+      m.position.set(c.x, c.y, z);
+      m.receiveShadow = true;
+      decor.add(m);
+    } else {
+      const h = tile / 2;
+      const pts = [[-h, -h], [h, -h], [h, h], [-h, h], [-h, -h]].map(([x, y]) => new THREE.Vector3(c.x + x, c.y + y, z));
+      const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), dashMat);
+      line.computeLineDistances();
+      decor.add(line);
     }
   });
+  dashMat.dashSize = dashMat.gapSize = C * 0.04;
+  const grid = new THREE.Box3(new THREE.Vector3(-cols * C / 2, -rows * C / 2 - C * 0.25, 0), new THREE.Vector3(cols * C / 2, rows * C / 2, nominal));
+  if (view === 'matrix') bounds.union(grid);
+  if (bounds.isEmpty()) bounds.setFromCenterAndSize(new THREE.Vector3(0, 0, nominal / 2), new THREE.Vector3(nominal, nominal, nominal).multiplyScalar(2));
 
-  board.updateMatrixWorld(true);
-  const bounds = new THREE.Box3().setFromObject(board);
-  fitShadows(bounds);
-  // Re-frame when the board changes size a lot (first block arrives, models change scale).
-  const size = bounds.getSize(new THREE.Vector3()).length();
-  if (!lastBounds || Math.abs(size - lastBounds) / lastBounds > 0.25) fit(bounds);
-  lastBounds = size;
+  fitShadows(bounds.clone().union(grid));
+  currentBounds = bounds;
+  renderContext();
+  return bounds;
 }
 
-function firstModelColor(id) {
-  let c = null;
-  blocks[id].raw.traverse((o) => { if (!c && o.isMesh) c = o.userData.modelColor; });
-  return c;
+// ---------- camera: glide to frame the view, keeping the direction the viewer chose
+let camGoal = null;
+const DEFAULT_DIR = new THREE.Vector3(-0.62, -0.95, 0.85).normalize();
+const MATRIX_DIR = new THREE.Vector3(0, -0.5, 1).normalize();
+// Distance at which all 8 corners of `box` fit in the view (with room for the controls), looking along the current direction.
+function frame(box = currentBounds, dir = camGoal?.dir || camera.position.clone().sub(controls.target).normalize()) {
+  const c = box.getCenter(new THREE.Vector3());
+  const right = new THREE.Vector3().crossVectors(dir.clone().negate(), camera.up).normalize();
+  const up = new THREE.Vector3().crossVectors(right, dir.clone().negate());
+  const margin = camera.aspect < 1 ? 0.7 : 0.6;
+  const ty = Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) * margin;
+  const tx = ty * camera.aspect;
+  let dist = 0;
+  for (let i = 0; i < 8; i++) {
+    const v = new THREE.Vector3(i & 1 ? box.max.x : box.min.x, i & 2 ? box.max.y : box.min.y, i & 4 ? box.max.z : box.min.z).sub(c);
+    const d = v.dot(dir);
+    dist = Math.max(dist, d + Math.abs(v.dot(up)) / ty, d + Math.abs(v.dot(right)) / tx);
+  }
+  camGoal = { target: c, dist: Math.max(dist, 0.1), dir: dir.clone() };
 }
-
-// ---------- framing
 function fitShadows(box) {
   const c = box.getCenter(new THREE.Vector3());
   const r = Math.max(box.getSize(new THREE.Vector3()).length() / 2, 1);
   sun.target.position.copy(c);
-  sun.position.copy(c).add(new THREE.Vector3(-0.3, -0.9, 1.1).normalize().multiplyScalar(r * 2.5));
+  sun.position.copy(c).add(new THREE.Vector3(-0.55, -0.75, 1.05).normalize().multiplyScalar(r * 2.5));
   const s = sun.shadow.camera;
   s.left = -r; s.right = r; s.top = r; s.bottom = -r; s.near = r * 0.1; s.far = r * 6;
   s.updateProjectionMatrix();
-  sun.shadow.normalBias = r * 0.0015;
+  sun.shadow.normalBias = r * 0.002;
   ground.position.set(c.x, c.y, -r * 0.0005);
-  ground.scale.set(r * 8, r * 8, 1);
+  ground.scale.set(r * 10, r * 10, 1);
 }
-function fit(box = new THREE.Box3().setFromObject(board)) {
-  if (box.isEmpty()) return;
-  const c = box.getCenter(new THREE.Vector3());
-  const r = box.getSize(new THREE.Vector3()).length() / 2;
-  const vfov = THREE.MathUtils.degToRad(camera.fov);
-  const hfov = 2 * Math.atan(Math.tan(vfov / 2) * camera.aspect);
-  const dist = r / Math.sin(Math.min(vfov, hfov) / 2) * (camera.aspect < 1 ? 1 : 0.8); // the flat board is smaller than its bounding sphere
-  controls.target.copy(c);
-  camera.position.copy(c).add(new THREE.Vector3(0.45, -1, 0.72).normalize().multiplyScalar(dist));
-  camera.near = dist / 100; camera.far = dist * 20; camera.updateProjectionMatrix();
+addEventListener('resize', () => { resize(); frame(layout()); });
+
+// ---------- views and selection
+const tabs = [...document.querySelectorAll('.views button')];
+const ctxExploded = document.getElementById('ctx-exploded');
+const ctxSingle = document.getElementById('ctx-single');
+const slider = document.getElementById('separation');
+const sliderOut = document.getElementById('separation-value');
+slider.value = explode;
+sliderOut.textContent = `${explode.toFixed(1)}×`;
+
+let from = null;
+function setView(v, opts = {}) {
+  from = from === null ? null : view;
+  view = v;
+  if (opts.group) selected = opts.group;
+  for (const t of tabs) t.setAttribute('aria-selected', t.dataset.view === view);
+  ctxExploded.hidden = view !== 'exploded';
+  ctxSingle.hidden = view !== 'single';
+  // The matrix reads best from the front and standing still; the other views from the corner, orbiting.
+  const box = layout();
+  if (view === 'matrix') frame(box, MATRIX_DIR);
+  else if (from === 'matrix' || from === null) frame(box, DEFAULT_DIR);
+  else frame(box);
+  controls.autoRotate = rotateWanted && view !== 'matrix';
+  history.replaceState(null, '', `${location.search}#${view}${view === 'single' ? '-' + encodeURIComponent(selected) : ''}`);
+  renderGroups();
+}
+function step(d) {
+  const i = Math.max(0, slotList.findIndex((s) => s.key === selected));
+  setView('single', { group: slotList[(i + d + slotList.length) % slotList.length].key });
+}
+tabs.forEach((t) => { t.onclick = () => setView(t.dataset.view); });
+document.getElementById('prev').onclick = () => step(-1);
+document.getElementById('next').onclick = () => step(1);
+slider.oninput = () => {
+  explode = Number(slider.value);
+  sliderOut.textContent = `${explode.toFixed(1)}×`;
+  frame(layout());
+};
+
+function renderContext() {
+  const s = slotList.find((x) => x.key === selected);
+  if (!s) return;
+  const b = s.id && blocks[s.id];
+  document.getElementById('single-name').textContent = s.name;
+  document.getElementById('single-time').textContent = b ? `published ${timeAgo(b.publishedAt)}` : 'not published yet';
+}
+
+// ---------- group chips (status board + selector)
+const groupsEl = document.getElementById('groups');
+const clock = (iso) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+function timeAgo(iso) {
+  const s = Math.max(0, (Date.now() - new Date(iso)) / 1000);
+  if (s < 45) return 'just now';
+  if (s < 3600) return `${Math.round(s / 60)} min ago`;
+  return clock(iso);
+}
+function renderGroups() {
+  groupsEl.style.setProperty('--n', slotList.length);
+  while (groupsEl.children.length > slotList.length) groupsEl.lastChild.remove();
+  slotList.forEach((s, i) => {
+    let el = groupsEl.children[i];
+    if (!el) {
+      el = document.createElement('button');
+      el.className = 'cell';
+      el.innerHTML = '<b></b><small></small>';
+      groupsEl.appendChild(el);
+    }
+    const b = s.id && blocks[s.id];
+    el.dataset.key = s.key;
+    el.onclick = () => setView('single', { group: s.key });
+    el.querySelector('b').textContent = s.short;
+    el.querySelector('small').textContent = b ? timeAgo(b.publishedAt).replace(' ago', '') : '';
+    el.classList.toggle('on', !!b);
+    el.classList.toggle('fresh', !!b && Date.now() - new Date(b.publishedAt) < FRESH_MS);
+    el.style.setProperty('--c', chipColor(s));
+    el.style.setProperty('--fg', textOn(chipColor(s)));
+    el.setAttribute('aria-current', view === 'single' && s.key === selected);
+    el.title = b ? `${s.name}, published ${new Date(b.publishedAt).toLocaleTimeString()}` : `${s.name}, not published yet`;
+  });
 }
 
 // ---------- polling
-let lastEvent = null;
 let firstLoad = true;
+let lastEvent = null;
 const statusEl = document.getElementById('status');
-const clock = (iso) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-
+const slotName = (id) => (groupNumber(id) ? `Group ${groupNumber(id)}` : id);
 function renderStatus() {
   if (statusEl.classList.contains('error')) return;
-  const n = slots().filter((s) => s.id).length;
+  const n = slotList.filter((s) => s.id).length;
   if (n === 0) statusEl.textContent = 'No groups yet. Press Publish in Rhino and your cube appears here.';
-  else statusEl.textContent = `${n} of ${Math.max(GROUPS, n)} groups published.` +
-    (lastEvent ? ` ${slotLabel(lastEvent.id)} updated at ${clock(lastEvent.at)}.` : '');
+  else statusEl.textContent = `${n} of ${Math.max(GROUPS, slotList.length)} groups published.` +
+    (lastEvent ? ` ${slotName(lastEvent.id)} updated at ${clock(lastEvent.at)}.` : '');
 }
-function slotLabel(id) { const n = groupNumber(id); return n ? `Group ${n}` : id; }
+
+function pulse(id) {
+  const s = slotList.find((x) => x.id === id);
+  if (!s) return;
+  for (const el of [groupsEl.querySelector(`[data-key="${CSS.escape(s.key)}"]`), labels[s.key]?.element]) {
+    if (!el) continue;
+    el.classList.remove('pulse'); void el.offsetWidth; el.classList.add('pulse');
+  }
+}
 
 let polling = false;
 async function poll() {
   if (polling) return;
   polling = true;
   let changed = firstLoad;
+  const updated = [];
   try {
     const res = await fetch(STATE_URL, { cache: 'no-store' });
     if (!res.ok) throw new Error(`Server answered ${res.status}`);
     const state = await res.json();
     statusEl.classList.remove('error');
     const entries = state.blocks || {};
+    delete entries.CONTEXT; // the old city-block context model has no place in these views
 
-    for (const id of Object.keys(blocks)) {
-      if (!entries[id]) { disposeGroup(blocks[id].raw); delete blocks[id]; changed = true; }
-    }
+    for (const id of Object.keys(blocks)) if (!entries[id]) { removeBlock(id); changed = true; }
     for (const [id, entry] of Object.entries(entries)) {
       if (blocks[id] && blocks[id].url === entry.url) continue;
       try {
-        const raw = await buildGroup(id, entry.url);
+        const { raw, modelColor } = await buildGroup(id, entry.url);
         const wasThere = !!blocks[id];
-        if (wasThere) disposeGroup(blocks[id].raw);
-        blocks[id] = { url: entry.url, raw, publishedAt: entry.publishedAt, box: new THREE.Box3().setFromObject(raw) };
-        if (!firstLoad || wasThere) lastEvent = { id, at: entry.publishedAt };
+        removeBlock(id);
+        addBlock(id, entry, raw, modelColor);
+        if (!firstLoad || wasThere) { lastEvent = { id, at: entry.publishedAt }; updated.push(id); }
         changed = true;
       } catch (err) {
         console.warn(`Could not load ${id}:`, err);
@@ -524,53 +690,113 @@ async function poll() {
     statusEl.classList.add('error');
     statusEl.textContent = `Can't reach the server (${err.message}). Retrying every ${POLL_MS / 1000} s.`;
   } finally {
-    if (changed) rebuildLayout();
+    if (changed) {
+      const before = currentBounds.getSize(new THREE.Vector3()).length();
+      const box = layout();
+      // Re-frame on first load, or when the scene changed size noticeably.
+      if (firstLoad || Math.abs(box.getSize(new THREE.Vector3()).length() - before) / before > 0.15) frame(box);
+      if (firstLoad) snapCamera();
+    }
     firstLoad = false;
     polling = false;
+    renderGroups();
     renderStatus();
+    updated.forEach(pulse);
   }
 }
 
-// ---------- controls
-const btnSpin = document.getElementById('btn-spin');
-const btnLabels = document.getElementById('btn-labels');
-let spinning = false;
-function setSpin(on) { spinning = on; btnSpin.setAttribute('aria-pressed', on); }
-function setLabels(on) {
-  showLabels = on;
-  board.traverse((o) => { if (o.userData.label) o.visible = on; });
-  btnLabels.setAttribute('aria-pressed', on);
-}
-function nextMode() { mode = MODES[(MODES.indexOf(mode) + 1) % MODES.length]; recolor(); }
-btnSpin.onclick = () => setSpin(!spinning);
-btnLabels.onclick = () => setLabels(!showLabels);
-document.getElementById('btn-color').onclick = nextMode;
-document.getElementById('btn-fit').onclick = () => fit();
-addEventListener('keydown', (e) => {
-  if (e.target.closest('button') && (e.key === 'Enter' || e.key === ' ')) return;
-  const k = e.key.toLowerCase();
-  if (k === 'r') setSpin(!spinning);
-  else if (k === 'c') nextMode();
-  else if (k === 'l') setLabels(!showLabels);
-  else if (k === 'f') fit();
+// ---------- click a cube to open it on its own
+const raycaster = new THREE.Raycaster();
+let downAt = null;
+renderer.domElement.addEventListener('pointerdown', (e) => { downAt = [e.clientX, e.clientY]; });
+renderer.domElement.addEventListener('pointerup', (e) => {
+  if (!downAt || Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 5) return;
+  const p = new THREE.Vector2((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+  raycaster.setFromCamera(p, camera);
+  const meshes = [];
+  for (const b of Object.values(blocks)) if (b.holder.visible) b.raw.traverse((o) => { if (o.isMesh) meshes.push(o); });
+  const hit = raycaster.intersectObjects(meshes, false)[0];
+  if (!hit) return;
+  const slot = slotList.find((s) => s.id === hit.object.userData.blockId);
+  if (slot && !(view === 'single' && slot.key === selected)) setView('single', { group: slot.key });
 });
 
+// ---------- display controls
+let resumeTimer;
+const btnRotate = document.getElementById('btn-rotate');
+const btnLabels = document.getElementById('btn-labels');
+let rotateWanted = controls.autoRotate;
+btnRotate.setAttribute('aria-pressed', rotateWanted);
+function setRotate(on) { rotateWanted = on; controls.autoRotate = on && view !== 'matrix'; btnRotate.setAttribute('aria-pressed', on); }
+function setLabels(on) { document.body.classList.toggle('hide-labels', !on); btnLabels.setAttribute('aria-pressed', on); }
+function nextMode() { mode = MODES[(MODES.indexOf(mode) + 1) % MODES.length]; recolor(); }
+btnRotate.onclick = () => setRotate(!rotateWanted);
+btnLabels.onclick = () => setLabels(btnLabels.getAttribute('aria-pressed') !== 'true');
+document.getElementById('btn-color').onclick = nextMode;
+document.getElementById('btn-fit').onclick = () => frame();
+addEventListener('keydown', (e) => {
+  if (e.target.closest('button, input') && (e.key === 'Enter' || e.key === ' ')) return;
+  if (e.target.matches('input') && e.key.startsWith('Arrow')) return;
+  const k = e.key.toLowerCase();
+  if (k >= '1' && k <= '4' && k.length === 1) setView(VIEWS[Number(k) - 1]);
+  else if (k === 'arrowright') step(view === 'single' ? 1 : 0);
+  else if (k === 'arrowleft') step(view === 'single' ? -1 : 0);
+  else if (k === 'r') setRotate(!rotateWanted);
+  else if (k === 'c') nextMode();
+  else if (k === 'l') btnLabels.click();
+  else if (k === 'f') frame();
+});
+// Steering by hand stops the camera glide and pauses the orbit for 20 s.
+controls.addEventListener('start', () => { camGoal = null; controls.autoRotate = false; clearTimeout(resumeTimer); });
+controls.addEventListener('end', () => { resumeTimer = setTimeout(() => { controls.autoRotate = rotateWanted && view !== 'matrix'; }, 20000); });
+
+// ---------- animation
+function snapCamera() {
+  if (!camGoal) return;
+  controls.target.copy(camGoal.target);
+  camera.position.copy(camGoal.target).addScaledVector(camGoal.dir, camGoal.dist);
+  camGoal = null;
+}
 const timer = new THREE.Clock();
 renderer.setAnimationLoop(() => {
-  const dt = timer.getDelta();
-  if (spinning) {
-    spinAngle = (spinAngle + dt * 0.3) % (Math.PI * 2);
-    for (const p of spinners) p.rotation.z = spinAngle;
+  const dt = Math.min(timer.getDelta(), 0.1);
+  const a = 1 - Math.exp(-dt * 7);
+  for (const b of Object.values(blocks)) {
+    const h = b.holder, u = h.userData;
+    h.position.lerp(u.target, a);
+    const s = THREE.MathUtils.lerp(h.scale.x, u.scale, a);
+    h.scale.setScalar(Math.abs(s - u.scale) < 1e-3 ? u.scale : s);
+    h.visible = h.scale.x > 0.002;
   }
+  for (const l of Object.values(labels)) l.position.lerp(l.userData.target, a);
+  const tileGoal = view === 'matrix' ? 1 : 0;
+  tileMat.opacity = THREE.MathUtils.lerp(tileMat.opacity, tileGoal, a);
+  dashMat.opacity = THREE.MathUtils.lerp(dashMat.opacity, tileGoal * 0.9, a);
+  decor.visible = tileMat.opacity > 0.01;
+
+  if (camGoal) {
+    const t = 1 - Math.exp(-dt * 4);
+    const offset = camera.position.clone().sub(controls.target);
+    const len = THREE.MathUtils.lerp(offset.length(), camGoal.dist, t);
+    const dir = offset.normalize().lerp(camGoal.dir, t).normalize();
+    controls.target.lerp(camGoal.target, t);
+    camera.position.copy(controls.target).addScaledVector(dir, len);
+    if (controls.target.distanceTo(camGoal.target) < camGoal.dist * 1e-3 && Math.abs(len - camGoal.dist) < camGoal.dist * 1e-3 &&
+        dir.angleTo(camGoal.dir) < 1e-3) camGoal = null;
+  }
+  const d = camera.position.distanceTo(controls.target);
+  camera.near = d / 100; camera.far = d * 30; camera.updateProjectionMatrix();
   controls.update();
   renderer.render(scene, camera);
+  labelRenderer.render(scene, camera);
 });
 
-// Draw the labels with the web font once it has loaded.
-await Promise.race([document.fonts.load('700 96px Archivo'), new Promise((r) => setTimeout(r, 2500))]).catch(() => {});
+setView(view);
+snapCamera();
+from = view;
 poll();
 setInterval(poll, POLL_MS);
-setInterval(() => { rebuildLayout(); renderStatus(); }, 15000); // refresh "x min ago" and fresh tints
+setInterval(() => { renderGroups(); renderContext(); renderStatus(); }, 15000);
 </script>
 </body>
 </html>

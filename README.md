@@ -27,7 +27,6 @@ Rhino (optional)    ◀───────────  /api/state  (WorkshopS
 | `lib/manifest.js` | Shared storage logic |
 | `rhino/WorkshopPublish.py` | The Publish button for students (Rhino 7 and 8, Windows and Mac) |
 | `rhino/WorkshopSync.py` | Optional: shows all published pieces inside your own Rhino |
-| `rhino/RandomVoidCube.py` | Makes a 0.45 m cube with random organic voids (caves) as one closed polysurface; options for void percentage, cave size and a seed to repeat a result |
 
 ## Set up (once, about 10 minutes)
 
@@ -47,7 +46,8 @@ Rhino (optional)    ◀───────────  /api/state  (WorkshopS
 
 - **Template file:** give every group the same .3dm with each group's cube already at its place in the combined shape (real coordinates), so the **Combined** view assembles itself without anyone moving anything. The viewer centres each group's piece on its own plate, so position only matters for Combined.
 - **Group numbers:** the publish script asks each group for its number (Group 1 … 8) and uploads under that number, so it matches the chip with the same number on the screen. For more or fewer groups, change `GROUPS` at the top of `WorkshopPublish.py` and open the screen with `?groups=`.
-- **Colours:** the screen uses each object's colour from Rhino (object colour, or the layer colour if that isn't black). Pieces without a colour get the group's colour: 1 grey, 2 yellow, 3 green, 4 dark green, 5 red, 6 light red, 7 cyan, 8 purple.
+- **Colours:** by default each group has its own colour: 1 vermilion, 2 marigold, 3 leaf green, 4 jade, 5 blue, 6 violet, 7 rose, 8 earth brown. **C** switches to each object's own colour from Rhino (object colour, or the layer colour if that isn't black) or to a white model.
+- **Logos:** put the official logo files in `public/logos/` as `mvrdv.svg` and `ncku.svg` (`.png` works too). Until they're there, the bottom left shows the names as text.
 - **Dry run:** publish from two laptops on the classroom Wi-Fi, press **Update** on the screen and check both cubes appear.
 
 ## Students: installing the Publish button
@@ -75,12 +75,18 @@ Open your Vercel URL fullscreen (F11). Drag to orbit, scroll to zoom.
 | **S** | Sun on/off |
 | **A** | Animals on/off |
 | **R** | Slow orbit on/off (dragging pauses it for 20 s; the matrix never orbits) |
-| **C** | Colours: model colours / group colours / white model |
+| **C** | Colours: group colours / model colours / white model |
+| **T** | Rock: show the cubes in stone |
+| **Esc** | Close the cube's card |
 | **L** | Group labels |
 | **F** | Fit the view |
 | **U** | Update: load the newest models now (see below) |
 
-Click a cube, or a group chip at the bottom left, to open that group in One by one. Each chip shows when the group last published; a dot marks the ones published in the last 90 seconds.
+**Click a cube** for its card: size, volume, void (share of its bounding box left empty), estimated weight in sandstone (2.3 t/m³), surface area, which cubes it touches and over how much area, triangle count and file size, plus buttons for One by one and Interfaces. The card also **downloads the published .3dm files**: this version, all versions of the group (zip), or every group as shown (zip; when you're looking back in the history, the versions of that moment). These are the files the Publish button sent, so meshes in metres, not the students' working files. Volume needs a closed model; otherwise the card says so. Clicking empty space or **Esc** closes it.
+
+Clicking a group chip at the bottom left opens that group in One by one with its card. Each chip shows when the group last published; a dot marks the ones published in the last 90 seconds.
+
+**Rock** (T) shows the cubes in stone: a sandstone-like pattern (made in the browser, no image files) about 35 cm across, tinted with the group colour, or plain stone together with the white model.
 
 The address keeps the current view, so you can bookmark one: `…/#matrix`, `…/#exploded`, `…/#single-3`, `…/#interfaces-3`.
 
@@ -92,7 +98,7 @@ The address keeps the current view, so you can bookmark one: `…/#matrix`, `…
 
 **Interfaces.** For the selected group, one row per face that touches another group's cube: that face (as seen from the neighbour), the neighbour's face (mirrored so the two line up) and both overlaid. Colour is the surface lying in the shared plane, dark lines are its edges, grey lines are edges further back. In the overlay, mixed colour is where the two faces meet, and a single colour is where only one of them has material. Faces count as touching when the cubes' bounding boxes sit within 3% of a cube's size of each other. **Print** prints just the drawings.
 
-URL options: `?title=Studio%20Rotterdam` sets the heading, `?poll=5` the refresh interval in seconds, `?groups=8` the number of groups, `?explode=1` the starting separation (1 = each piece moves its own distance from the centre again; 0–3), `?view=matrix` the starting view. Sun: `?sun=1` starts with the sun on, `?day=172&time=15:00` (day of the year, 1–365) the moment, `?lat=…&lon=…&tz=…&place=…` another location, `?north=30` if north in the Rhino model is turned 30° anticlockwise from +Y.
+URL options: `?title=Studio%20Rotterdam` sets the heading, `?poll=5` the refresh interval in seconds, `?groups=8` the number of groups, `?explode=1` the starting separation (1 = each piece moves its own distance from the centre again; 0–3), `?view=matrix` the starting view, `?colors=model` (or `white`) the starting colours, `?rock=1` starts in stone. Sun: `?sun=1` starts with the sun on, `?day=172&time=15:00` (day of the year, 1–365) the moment, `?lat=…&lon=…&tz=…&place=…` another location, `?north=30` if north in the Rhino model is turned 30° anticlockwise from +Y.
 
 ## Optional: blocks inside your own Rhino
 

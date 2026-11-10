@@ -137,6 +137,14 @@
     font-weight: 650; white-space: nowrap; }
   .history .live[aria-pressed="true"] { background: #b3261e; border-color: #b3261e; color: #fff; }
 
+  /* section planes */
+  .sectionpanel { display: grid; grid-template-columns: auto minmax(120px, 200px) auto; gap: 6px 10px; align-items: center; }
+  .sectionpanel b { grid-column: 1 / -1; font-weight: 650; }
+  .sectionpanel label { font-weight: 650; display: flex; align-items: center; gap: 6px; cursor: pointer; }
+  .sectionpanel input[type=checkbox] { accent-color: #b3261e; width: 16px; height: 16px; margin: 0; }
+  .sectionpanel input[type=range] { width: 100%; accent-color: #b3261e; }
+  .sectionpanel .step { width: 28px; height: 26px; font-size: 14px; }
+
   /* sun */
   .sunpanel { display: grid; grid-template-columns: auto minmax(110px, 190px) 7ch auto; gap: 6px 10px; align-items: center; }
   .sunpanel .step { grid-row: span 2; }
@@ -243,6 +251,18 @@
       <button class="step" id="next" aria-label="Next group" title="Next group (→)">›</button>
     </div>
     <section class="context card" id="card" hidden aria-live="polite"></section>
+    <div class="context sectionpanel" id="ctx-section" hidden>
+      <b>Section</b>
+      <label><input type="checkbox" id="cut-0"> X</label>
+      <input type="range" id="cut-0-at" min="0" max="1000" step="1" value="500" aria-label="Position of the X plane">
+      <button class="step" id="cut-0-flip" type="button" aria-label="Keep the other side of the X plane" title="Keep the other side">⇄</button>
+      <label><input type="checkbox" id="cut-1"> Y</label>
+      <input type="range" id="cut-1-at" min="0" max="1000" step="1" value="500" aria-label="Position of the Y plane">
+      <button class="step" id="cut-1-flip" type="button" aria-label="Keep the other side of the Y plane" title="Keep the other side">⇄</button>
+      <label><input type="checkbox" id="cut-2"> Z</label>
+      <input type="range" id="cut-2-at" min="0" max="1000" step="1" value="500" aria-label="Position of the Z plane">
+      <button class="step" id="cut-2-flip" type="button" aria-label="Keep the other side of the Z plane" title="Keep the other side">⇄</button>
+    </div>
     <div class="context sunpanel" id="ctx-sun" hidden>
       <label for="sun-day">Date</label>
       <input id="sun-day" type="range" min="1" max="365" step="1">
@@ -284,6 +304,7 @@
     <button id="btn-animals" aria-pressed="false" title="Taiwanese animals living on the cubes (A)"><kbd>A</kbd> Animals</button>
     <button id="btn-color" title="Switch colors: groups, model, white (C)"><kbd>C</kbd> <span id="color-name">Group colors</span></button>
     <button id="btn-rock" aria-pressed="false" title="Show the cubes in stone (T)"><kbd>T</kbd> Rock</button>
+    <button id="btn-section" aria-pressed="false" title="Cut the model with planes along X, Y and Z (X)"><kbd>X</kbd> Section</button>
     <button id="btn-labels" aria-pressed="true" title="Show group labels (L)"><kbd>L</kbd> Labels</button>
     <button id="btn-fit" title="Frame the view (F)"><kbd>F</kbd> Fit</button>
   </div>
@@ -356,6 +377,7 @@ const viewEl = document.getElementById('view');
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
+renderer.localClippingEnabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 viewEl.appendChild(renderer.domElement);
 const labelRenderer = new CSS2DRenderer();
@@ -371,7 +393,7 @@ const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.autoRotate = !matchMedia('(prefers-reduced-motion: reduce)').matches;
 controls.autoRotateSpeed = 0.35;
-controls.maxPolarAngle = Math.PI * 0.49;
+controls.maxPolarAngle = Math.PI;   // all the way round, to see the bottom too
 
 const hemi = new THREE.HemisphereLight('#ffffff', '#b9c0c8', 1.7);
 scene.add(hemi);
@@ -384,8 +406,11 @@ const ground = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.ShadowMat
 ground.receiveShadow = true;
 scene.add(ground);
 
-const edgeMat = new THREE.LineBasicMaterial({ color: '#1e232a', transparent: true, opacity: 0.55 });
-const curveMat = new THREE.LineBasicMaterial({ color: '#1e232a', transparent: true, opacity: 0.75 });
+// Section planes (X key): always three, parked far away when off, so switching never recompiles shaders.
+const cutPlanes = [0, 1, 2].map(() => new THREE.Plane(new THREE.Vector3(0, 0, 1), 1e9));
+const sectionUniform = { value: 0 };
+const edgeMat = new THREE.LineBasicMaterial({ color: '#1e232a', transparent: true, opacity: 0.55, clippingPlanes: cutPlanes });
+const curveMat = new THREE.LineBasicMaterial({ color: '#1e232a', transparent: true, opacity: 0.75, clippingPlanes: cutPlanes });
 // Matrix tiles fade in and out with the view.
 const tileMat = new THREE.MeshLambertMaterial({ color: '#eef0f1', transparent: true, opacity: 0, depthWrite: false });
 const dashMat = new THREE.LineDashedMaterial({ color: '#8f99a3', transparent: true, opacity: 0 });
@@ -470,6 +495,7 @@ async function buildGroup(id, url) {
     if (!g.attributes.normal) g.computeVertexNormals();
     const mat = new THREE.MeshStandardMaterial({ color: surfaceColor(id, modelColor), roughness: 0.92, metalness: 0,
       side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
+    mat.clippingPlanes = cutPlanes;
     rockify(mat, scale);
     const mesh = new THREE.Mesh(g, mat);
     mesh.castShadow = mesh.receiveShadow = true;
@@ -760,6 +786,7 @@ function layout() {
 
   fitShadows(bounds.clone().union(grid));
   currentBounds = bounds;
+  updateCuts();
   updateSunPath();
   renderContext();
   return bounds;
@@ -772,7 +799,9 @@ const MATRIX_DIR = new THREE.Vector3(0, -0.5, 1).normalize();
 // Distance at which all 8 corners of `box` fit in the view (with room for the controls), looking along the current direction.
 function frame(box = currentBounds, dir = camGoal?.dir || camera.position.clone().sub(controls.target).normalize()) {
   const c = box.getCenter(new THREE.Vector3());
-  const right = new THREE.Vector3().crossVectors(dir.clone().negate(), camera.up).normalize();
+  const right = new THREE.Vector3().crossVectors(dir.clone().negate(), camera.up);
+  if (right.lengthSq() < 1e-8) right.set(1, 0, 0);   // looking straight up or down
+  right.normalize();
   const up = new THREE.Vector3().crossVectors(right, dir.clone().negate());
   const margin = camera.aspect < 1 ? 0.7 : 0.6;
   const ty = Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) * margin;
@@ -1025,7 +1054,7 @@ renderer.domElement.addEventListener('pointerup', (e) => {
   }
   const meshes = [];
   for (const b of Object.values(blocks)) if (b.holder.visible) b.raw.traverse((o) => { if (o.isMesh) meshes.push(o); });
-  const hit = raycaster.intersectObjects(meshes, false)[0];
+  const hit = raycaster.intersectObjects(meshes, false).find((h) => keptBySection(h.point));   // skip what a section cut away
   if (!hit) { hideCard(); return; }   // clicking empty space closes the card
   const slot = slotList.find((s) => s.id === hit.object.userData.blockId);
   if (!slot) return;
@@ -1061,6 +1090,7 @@ addEventListener('keydown', (e) => {
   else if (k === 's') setSun(!sunOn);
   else if (k === 'a') setAnimals(!animalsOn);
   else if (k === 't') setRock(!rockOn);
+  else if (k === 'x') setSection(!sectionOn);
   else if (k === 'escape') hideCard();
   else if (k === 'r') setRotate(!rotateWanted);
   else if (k === 'c') nextMode();
@@ -1843,12 +1873,13 @@ function rockify(mat, metresPerUnit) {
   mat.onBeforeCompile = (shader) => {
     shader.uniforms.rockMap = rockUniforms.rockMap;
     shader.uniforms.rockOn = rockUniforms.rockOn;
+    shader.uniforms.sectionOn = sectionUniform;
     shader.uniforms.rockScale = { value: metresPerUnit / ROCK_TILE_M };
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\nvarying vec3 vRockPos;\nvarying vec3 vRockNormal;')
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvRockPos = position;\nvRockNormal = normal;');
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform sampler2D rockMap;\nuniform float rockOn;\nuniform float rockScale;\nvarying vec3 vRockPos;\nvarying vec3 vRockNormal;')
+      .replace('#include <common>', '#include <common>\nuniform sampler2D rockMap;\nuniform float rockOn;\nuniform float rockScale;\nuniform float sectionOn;\nvarying vec3 vRockPos;\nvarying vec3 vRockNormal;')
       .replace('#include <map_fragment>', `#include <map_fragment>
         if (rockOn > 0.5) {
           vec3 w = pow(abs(normalize(vRockNormal)), vec3(6.0));
@@ -1856,7 +1887,9 @@ function rockify(mat, metresPerUnit) {
           vec3 p = vRockPos * rockScale;
           vec3 stone = texture2D(rockMap, p.yz).rgb * w.x + texture2D(rockMap, p.xz + 0.37).rgb * w.y + texture2D(rockMap, p.xy + 0.71).rgb * w.z;
           diffuseColor.rgb *= stone;
-        }`);
+        }
+        // where a section plane cuts a cube we look at its inside faces: draw them as dark poché
+        if (sectionOn > 0.5 && !gl_FrontFacing) diffuseColor.rgb = vec3(0.16, 0.17, 0.19);`);
   };
   mat.customProgramCacheKey = () => 'rock';
 }
@@ -1913,9 +1946,68 @@ function setRock(on) {
 }
 btnRock.onclick = () => setRock(!rockOn);
 
+// ---------- section (X): cut the model with planes along X, Y and Z
+// Each plane sits at a fraction of the current view's extent and cuts away its positive side
+// (⇄ keeps the other side). Cut cubes show their inside faces in a dark poché tone.
+const btnSection = document.getElementById('btn-section');
+const ctxSection = document.getElementById('ctx-section');
+let sectionOn = false;
+const cuts = [0, 1, 2].map(() => ({ on: false, at: 0.5, flip: false }));
+const guideMat = new THREE.LineBasicMaterial({ color: '#b3261e', transparent: true, opacity: 0.75 });
+const guides = new THREE.Group();
+scene.add(guides);
+function updateCuts() {
+  const box = currentBounds.clone().expandByScalar(nominal * 0.03);
+  guides.traverse((o) => o.geometry?.dispose());
+  guides.clear();
+  cuts.forEach((c, a) => {
+    const plane = cutPlanes[a];
+    if (!sectionOn || !c.on) { plane.normal.set(0, 0, 1); plane.constant = 1e9; return; }
+    const v = THREE.MathUtils.lerp(box.min.getComponent(a), box.max.getComponent(a), c.at);
+    plane.normal.set(0, 0, 0).setComponent(a, c.flip ? 1 : -1);
+    plane.constant = c.flip ? -v : v;
+    const u = (a + 1) % 3, w = (a + 2) % 3;
+    const corner = (hu, hw) => new THREE.Vector3().setComponent(a, v)
+      .setComponent(u, hu ? box.max.getComponent(u) : box.min.getComponent(u))
+      .setComponent(w, hw ? box.max.getComponent(w) : box.min.getComponent(w));
+    guides.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints([corner(0, 0), corner(1, 0), corner(1, 1), corner(0, 1)]), guideMat));
+  });
+  sectionUniform.value = sectionOn && cuts.some((c) => c.on) ? 1 : 0;
+}
+const keptBySection = (p) => cutPlanes.every((pl) => pl.distanceToPoint(p) >= 0);
+// A plane that gets switched on cuts away the side the camera is on, so the cut faces you.
+function enableCut(a) {
+  cuts[a].on = true;
+  cuts[a].flip = camera.position.getComponent(a) < controls.target.getComponent(a);
+}
+function renderSection() {
+  btnSection.setAttribute('aria-pressed', sectionOn);
+  ctxSection.hidden = !sectionOn;
+  cuts.forEach((c, a) => {
+    document.getElementById(`cut-${a}`).checked = c.on;
+    document.getElementById(`cut-${a}-at`).value = Math.round(c.at * 1000);
+  });
+}
+function setSection(on) {
+  sectionOn = on;
+  if (on && !cuts.some((c) => c.on)) enableCut(0);   // start with a vertical cut across X
+  updateCuts();
+  renderSection();
+}
+cuts.forEach((c, a) => {
+  document.getElementById(`cut-${a}`).onchange = (e) => { if (e.target.checked) enableCut(a); else c.on = false; updateCuts(); };
+  document.getElementById(`cut-${a}-at`).oninput = (e) => {
+    c.at = e.target.value / 1000;
+    if (!c.on) { enableCut(a); renderSection(); }
+    updateCuts();
+  };
+  document.getElementById(`cut-${a}-flip`).onclick = () => { c.flip = !c.flip; c.on = true; renderSection(); updateCuts(); };
+});
+btnSection.onclick = () => setSection(!sectionOn);
+
 // ---------- statistics card: click a cube (or its chip) to see what it's made of
 const cardEl = document.getElementById('card');
-const STONE_DENSITY = 2300;   // kg/m³, sandstone
+const CONCRETE_DENSITY = 2400;   // kg/m³, plain concrete
 let cardFor = null;           // slot key
 const statsCache = new WeakMap();
 // Volume (closed meshes, by summing signed tetrahedra), surface area and triangle count, in metres.
@@ -1975,7 +2067,7 @@ function renderCard() {
       <dt>Size</dt><dd>${fmtNum(b.size.x)} × ${fmtNum(b.size.y)} × ${fmtNum(b.size.z)} m</dd>
       ${solidOk ? `<dt>Volume</dt><dd>${fmtNum(st.volume, 3)} m³ <small>(${fmtNum(st.volume * 1000, 0)} L)</small></dd>
       <dt>Void</dt><dd>${fmtNum((1 - st.volume / boxVol) * 100, 0)}% <small>of its bounding box</small></dd>
-      <dt>In stone</dt><dd>≈ ${fmtNum(st.volume * STONE_DENSITY, 0)} kg <small>(sandstone, 2.3 t/m³)</small></dd>`
+      <dt>In concrete</dt><dd>≈ ${fmtNum(st.volume * CONCRETE_DENSITY, 0)} kg <small>(2.4 t/m³)</small></dd>`
       : `<dt>Volume</dt><dd><small>can't tell: the model isn't one closed solid</small></dd>`}
       <dt>Surface</dt><dd>${fmtNum(st.area)} m²</dd>
       <dt>Touching</dt><dd>${near.length ? `${near.length} ${near.length === 1 ? 'cube' : 'cubes'} <small>(group ${esc(names)})</small>, ${fmtNum(touching)} m²` : '<small>no other cube</small>'}</dd>

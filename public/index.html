@@ -120,7 +120,7 @@
 
 <div class="top">
   <header class="title">
-    <h1 id="title">Cube workshop</h1>
+    <h1 id="title">Tainan Rocks</h1>
     <p id="status" role="status">Connecting…</p>
   </header>
   <div class="controls">
@@ -163,7 +163,7 @@ import rhino3dm from 'rhino3dm';
 
 // ---------- settings (URL parameters, e.g. ?title=Studio%20B&groups=8&explode=1.5&view=matrix&poll=5)
 const params = new URLSearchParams(location.search);
-const TITLE = params.get('title') || 'Cube workshop';
+const TITLE = params.get('title') || 'Tainan Rocks';
 const POLL_MS = Math.max(3, Number(params.get('poll')) || 5) * 1000;
 const GROUPS = Math.max(1, Math.min(24, Math.round(Number(params.get('groups'))) || 8));
 const STATE_URL = params.get('api') || '/api/state';

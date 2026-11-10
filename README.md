@@ -1,11 +1,15 @@
 # Workshop Live
 
-Students design their block in Rhino and press **Publish**. The class screen shows all blocks of the 4×4 grid together in 3D and updates within about 10 seconds.
+Each group designs one piece (a cube) in Rhino and presses **Publish**. The class screen shows the pieces the way the reference Rhino file lays them out, and updates within about 10 seconds:
+
+- **Combined**: all pieces together at their real Rhino coordinates (e.g. eight cubes forming one 2×2×2 cube)
+- **Combined exploded**: the same, with every piece pushed away from the centre so you can see each one
+- **Group 1 … Group 8**: a row of plates, each showing one group's piece on its own, with when it was last published
 
 ```
 Rhino (each group)                 Vercel                          Class screen (browser)
 WorkshopPublish.py  ── .3dm ──▶  /api/publish ──▶ Blob storage ◀── index.html polls /api/state
-                                                                   every 5 s, loads changed blocks
+                                                                   every 5 s, loads changed groups
 Rhino (optional)    ◀───────────  /api/state  (WorkshopSync.py pulls everything into Rhino)
 ```
 
@@ -13,12 +17,12 @@ Rhino (optional)    ◀───────────  /api/state  (WorkshopS
 
 | Path | What it is |
 |---|---|
-| `public/index.html` | The class-screen viewer: 3D model of all blocks plus a key plan showing who published when |
-| `api/publish.js` | Receives uploads from Rhino (and lets you remove a block or clear everything) |
-| `api/state.js` | Tells viewers which blocks exist and where their files are |
+| `public/index.html` | The class-screen viewer: Combined, Combined exploded and one plate per group, all in one 3D scene |
+| `api/publish.js` | Receives uploads from Rhino (and lets you remove a group or clear everything) |
+| `api/state.js` | Tells viewers which groups have published and where their files are |
 | `lib/manifest.js` | Shared storage logic |
 | `rhino/WorkshopPublish.py` | The Publish button for students (Rhino 7 and 8, Windows and Mac) |
-| `rhino/WorkshopSync.py` | Optional: shows all published blocks inside your own Rhino |
+| `rhino/WorkshopSync.py` | Optional: shows all published pieces inside your own Rhino |
 
 ## Set up (once, about 10 minutes)
 
@@ -27,7 +31,7 @@ Rhino (optional)    ◀───────────  /api/state  (WorkshopS
 3. **Add Blob storage.** In the project: Storage → Create → Blob → set access to **Public** → connect it to the project (all environments).
 4. **Set the passcode.** Settings → Environment Variables → add `WORKSHOP_KEY` with any passcode you like (e.g. `blocks-2026`).
 5. **Redeploy** (Deployments → ⋯ → Redeploy) so the new storage and passcode are picked up.
-6. **Open your URL.** You should see the empty key plan and "No blocks yet."
+6. **Open your URL.** You should see the empty plates (Combined, Combined exploded, Group 1–8) and "No groups yet."
 7. **Edit the Rhino scripts.** At the top of `rhino/WorkshopPublish.py` and `rhino/WorkshopSync.py`, set:
    ```python
    SERVER_URL = "https://your-project.vercel.app"
@@ -36,8 +40,9 @@ Rhino (optional)    ◀───────────  /api/state  (WorkshopS
 
 ## Before the workshop
 
-- **Template file:** give every group the same .3dm with the 4×4 grid at real coordinates, so blocks land in the right place without anyone moving anything. Block IDs are rows A–D (A at the top of the key plan) and columns 1–4.
-- **Context:** in your own file with the streets and the 8 unassigned blocks, run the publish script and choose `CONTEXT`. It shows in white.
+- **Template file:** give every group the same .3dm with each group's cube already at its place in the combined shape (real coordinates), so the **Combined** view assembles itself without anyone moving anything. The viewer centres each group's piece on its own plate, so position only matters for Combined.
+- **Group IDs:** when the publish script asks which block you're designing, groups answer with their number: `1` … `8` (`G3` or `GROUP3` also work). Any other ID gets an extra plate at the end of the row.
+- **Colours:** the screen uses each object's colour from Rhino (object colour, or the layer colour if that isn't black). Pieces without a colour get the group's colour: 1 grey, 2 yellow, 3 green, 4 dark green, 5 red, 6 light red, 7 cyan, 8 purple.
 - **Dry run:** publish from two laptops on the classroom Wi-Fi and check the screen updates.
 
 ## Students: installing the Publish button
@@ -55,21 +60,21 @@ What gets published: everything visible. Hidden objects and hidden layers are sk
 
 ## On the screen
 
-Open your Vercel URL fullscreen (F11). Keys: **R** slow orbit on/off, **C** colors (group / model colors / white model), **L** labels, **F** fit everything. Dragging pauses the orbit for 20 seconds.
+Open your Vercel URL fullscreen (F11). Drag to orbit, scroll to zoom. Keys: **R** slowly spins each model on its plate, **C** colours (model colours / group colours / white model), **L** plate labels, **F** fit everything. A plate is tinted for 90 seconds after its group publishes.
 
-URL options: `?title=Studio%20Rotterdam` sets the heading, `?poll=5` the refresh interval in seconds, `?rows=ABCD&cols=4` the grid.
+URL options: `?title=Studio%20Rotterdam` sets the heading, `?poll=5` the refresh interval in seconds, `?groups=8` the number of group plates, `?explode=1` how far the exploded view pushes pieces apart (1 = each piece moves its own distance from the centre again; 0.5 = half that).
 
 ## Optional: blocks inside your own Rhino
 
-Run `WorkshopSync.py` on the presentation laptop. Each block arrives on its own layer `Workshop Live::B3` and is replaced whenever that group publishes. Run it again to stop. Don't model on those layers.
+Run `WorkshopSync.py` on the presentation laptop. Each group arrives on its own layer `Workshop Live::3` and is replaced whenever that group publishes. Run it again to stop. Don't model on those layers.
 
 ## Clearing between workshops
 
 ```bash
 # remove everything
 curl -X DELETE "https://your-project.vercel.app/api/publish?block=ALL" -H "x-workshop-key: blocks-2026"
-# remove one block
-curl -X DELETE "https://your-project.vercel.app/api/publish?block=B3" -H "x-workshop-key: blocks-2026"
+# remove one group
+curl -X DELETE "https://your-project.vercel.app/api/publish?block=3" -H "x-workshop-key: blocks-2026"
 ```
 (`curl` is built into Windows 10+ and macOS.)
 
@@ -77,7 +82,7 @@ curl -X DELETE "https://your-project.vercel.app/api/publish?block=B3" -H "x-work
 
 - Each publish uses 2 of the 2,000 monthly "advanced" Blob operations, so roughly 900 publishes a month. A 3-hour workshop with 8 groups publishing every 10 minutes uses about 300.
 - The screen reads the server about 10 times a minute no matter how many browsers are open, well inside the free read allowance. Close the viewer outside class hours.
-- Uploads are capped at 4 MB per block (Vercel's request limit is 4.5 MB). Massing models are usually well under 1 MB.
+- Uploads are capped at 4 MB per group (Vercel's request limit is 4.5 MB). Massing models are usually well under 1 MB.
 
 ## Troubleshooting
 
@@ -87,4 +92,5 @@ curl -X DELETE "https://your-project.vercel.app/api/publish?block=B3" -H "x-work
 | "Server is missing the WORKSHOP_KEY environment variable" | Add it in Vercel and redeploy. |
 | "can't reach https://…" | Check the URL in the script and the laptop's internet. |
 | Viewer says "Can't reach the server" | Blob storage not connected to the project, or not redeployed after connecting. |
-| Block appears in the wrong place | That group's file isn't based on the shared template coordinates. |
+| A piece is in the wrong place in Combined | That group's file isn't based on the shared template coordinates. |
+| A group's piece doesn't show | Publish it as meshes (or with render meshes saved). Only meshes, curves, and breps/extrusions that carry a render mesh can be drawn in the browser. |

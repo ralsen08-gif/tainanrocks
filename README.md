@@ -1,11 +1,14 @@
 # Workshop Live
 
-Each group designs one piece (a cube) in Rhino and presses **Publish**. The class screen picks up new models by itself within about a minute, or straight away when you press **Update**, and has four views; the pieces glide between them:
+Each group designs one piece (a cube) in Rhino and presses **Publish**. The class screen picks up new models by itself within about a minute, or straight away when you press **Update**, and has five views; the pieces glide between them:
 
 - **Combined**: all pieces together at their real Rhino coordinates (e.g. eight cubes forming one 2×2×2 cube)
 - **Exploded**: the same, with every piece pushed away from the centre; a slider sets the separation
 - **One by one**: one group's piece on its own; step through the groups with ‹ › or the arrow keys
 - **Matrix**: every group's piece side by side in a grid, with empty spots for groups that haven't published
+- **Interfaces**: 2D drawings of the faces where a group's cube touches another cube (three each in a 2×2×2 cube), next to the neighbour's matching face and both overlaid, ready to print
+
+Every publish is kept, so the **history bar** can step back through the session, version by version, or replay it. **Sun** (S) lights the model with the real sun for any date and time in Tainan, with long shadows, the sun's path and a compass.
 
 ```
 Rhino (each group)                 Vercel                          Class screen (browser)
@@ -65,8 +68,10 @@ Open your Vercel URL fullscreen (F11). Drag to orbit, scroll to zoom.
 
 | Key | Does |
 |---|---|
-| **1** **2** **3** **4** | Combined / Exploded / One by one / Matrix |
+| **1** **2** **3** **4** **5** | Combined / Exploded / One by one / Matrix / Interfaces |
 | **←** **→** | Previous / next group (opens One by one) |
+| **[** **]** | Previous / next update in the history |
+| **S** | Sun on/off |
 | **R** | Slow orbit on/off (dragging pauses it for 20 s; the matrix never orbits) |
 | **C** | Colours: model colours / group colours / white model |
 | **L** | Group labels |
@@ -75,9 +80,15 @@ Open your Vercel URL fullscreen (F11). Drag to orbit, scroll to zoom.
 
 Click a cube, or a group chip at the bottom left, to open that group in One by one. Each chip shows when the group last published; a dot marks the ones published in the last 90 seconds.
 
-The address keeps the current view, so you can bookmark one: `…/#matrix`, `…/#exploded`, `…/#single-3`.
+The address keeps the current view, so you can bookmark one: `…/#matrix`, `…/#exploded`, `…/#single-3`, `…/#interfaces-3`.
 
-URL options: `?title=Studio%20Rotterdam` sets the heading, `?poll=5` the refresh interval in seconds, `?groups=8` the number of groups, `?explode=1` the starting separation (1 = each piece moves its own distance from the centre again; 0–3), `?view=matrix` the starting view.
+**History.** The bar above the group chips has a tick for every publish, in the group's colour. Drag the slider, use ‹ › or **[** **]**, or press ▶ to replay the session one update per second. Everything follows the point in time you pick, the interface drawings included; the status line says you're looking back. **● Live** returns to the newest version of every group. The server keeps the last 100 versions per group.
+
+**Sun.** Date and time sliders set the sun for Tainan (latitude 22.99°, longitude 120.21°, UTC+8); ▶ plays the day from 5:00 to 19:30. The model's +Y is taken as north. The orange arc is the sun's path that day, the grey ring the horizon.
+
+**Interfaces.** For the selected group, one row per face that touches another group's cube: that face (as seen from the neighbour), the neighbour's face (mirrored so the two line up) and both overlaid. Colour is the surface lying in the shared plane, dark lines are its edges, grey lines are edges further back. In the overlay, mixed colour is where the two faces meet, and a single colour is where only one of them has material. Faces count as touching when the cubes' bounding boxes sit within 3% of a cube's size of each other. **Print** prints just the drawings.
+
+URL options: `?title=Studio%20Rotterdam` sets the heading, `?poll=5` the refresh interval in seconds, `?groups=8` the number of groups, `?explode=1` the starting separation (1 = each piece moves its own distance from the centre again; 0–3), `?view=matrix` the starting view. Sun: `?sun=1` starts with the sun on, `?day=172&time=15:00` (day of the year, 1–365) the moment, `?lat=…&lon=…&tz=…&place=…` another location, `?north=30` if north in the Rhino model is turned 30° anticlockwise from +Y.
 
 ## Optional: blocks inside your own Rhino
 
@@ -99,6 +110,7 @@ curl -X DELETE "https://your-project.vercel.app/api/publish?block=3" -H "x-works
 - The screen reads the server about 10 times a minute no matter how many browsers are open, well inside the free read allowance. Close the viewer outside class hours.
 - Those reads go through Vercel's cache, which can be up to a minute behind, so a new publish takes up to a minute to appear by itself. **Update** (U) skips the cache: it lists the stored models and rebuilds the list from them, which costs 2 advanced Blob operations per press. Pressing it a few dozen times a session is fine; don't script it.
 - Uploads are capped at 4 MB per group (Vercel's request limit is 4.5 MB). Massing models are usually well under 1 MB.
+- Every version is kept (up to 100 per group) for the history, so storage grows with each publish: 8 groups × 100 versions × 200 KB is 160 MB. Check the storage your Vercel plan includes. Clear everything between workshops (see below).
 
 ## Troubleshooting
 

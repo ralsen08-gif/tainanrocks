@@ -94,12 +94,71 @@
   .label.pulse span { animation: lift 1.6s ease-out 2; }
   @keyframes lift { 0% { transform: translateY(-14px) scale(1.25); } 100% { transform: none; } }
 
+  /* history: step through every published version */
+  .history { flex: 1 1 100%; order: -1; display: flex; align-items: center; gap: 8px 10px; padding: 7px 10px;
+    background: var(--paper); border: 1px solid var(--rule); border-radius: 7px; pointer-events: auto; font-size: 14px; }
+  .history[hidden] { display: none; }
+  .step { width: 30px; height: 30px; flex: none; border: 1px solid var(--rule); background: #fff; border-radius: 5px;
+    cursor: pointer; font-size: 16px; line-height: 1; padding: 0; }
+  .step:hover { background: #e8ebec; }
+  .history .track { position: relative; flex: 1; min-width: 120px; height: 30px; }
+  .history .ticks { position: absolute; left: 8px; right: 8px; top: 1px; height: 9px; pointer-events: none; }
+  .history .ticks i { position: absolute; top: 0; width: 4px; height: 9px; margin-left: -2px; border-radius: 1px;
+    background: var(--c); box-shadow: 0 0 0 1px rgba(30,35,42,.18); }
+  .history input[type=range] { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; margin: 0; accent-color: var(--ink); }
+  .history .when { min-width: 25ch; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .history .when b { font-weight: 700; }
+  .history .live { border: 1px solid var(--rule); background: #fff; border-radius: 5px; padding: 5px 10px; cursor: pointer;
+    font-weight: 650; white-space: nowrap; }
+  .history .live[aria-pressed="true"] { background: #b3261e; border-color: #b3261e; color: #fff; }
+
+  /* sun */
+  .sunpanel { display: grid; grid-template-columns: auto minmax(110px, 190px) 7ch auto; gap: 6px 10px; align-items: center; }
+  .sunpanel .step { grid-row: span 2; }
+  .sunpanel input[type=range] { width: 100%; }
+  .sunpanel output { font-variant-numeric: tabular-nums; color: var(--ink); }
+  .sunpanel small { grid-column: 1 / -1; color: var(--muted); }
+  .label.compass span { background: none; box-shadow: none; color: var(--ink); padding: 0; font-size: 14px; }
+
+  /* interfaces sheet */
+  .sheet { position: fixed; left: var(--edge); right: var(--edge); top: var(--sheet-top, 150px); bottom: var(--sheet-bottom, 120px);
+    overflow: auto; background: #fff; border: 1px solid var(--rule); border-radius: 8px; padding: 18px 22px; }
+  .sheet[hidden] { display: none; }
+  .sheet header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 6px; }
+  .sheet h2 { margin: 0; font-size: 22px; font-weight: 780; font-variation-settings: 'wdth' 125; }
+  .sheet .note { color: var(--muted); font-size: 14px; line-height: 1.45; margin: 6px 0 0; max-width: 78ch; }
+  .sheet .empty { color: var(--muted); font-size: 15px; margin: 18px 0; }
+  .sheet .iface { border-top: 1px solid #e3e6e8; padding: 14px 0 6px; margin-top: 10px; }
+  .sheet h3 { margin: 0 0 10px; font-size: 16px; font-weight: 700; }
+  .sheet h3 small { color: var(--muted); font-weight: 500; font-size: 14px; }
+  .sheet .drawings { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+  .sheet figure { margin: 0; }
+  .sheet svg { display: block; width: 100%; height: auto; max-height: 36vh; background: #fbfbfa;
+    border: 1px solid #e3e6e8; border-radius: 4px; }
+  .sheet svg * { vector-effect: non-scaling-stroke; }
+  .sheet figcaption { font-size: 13px; margin-top: 6px; line-height: 1.4; }
+  .sheet figcaption span { color: var(--muted); }
+  .sheet .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: var(--c);
+    margin-right: 5px; vertical-align: -1px; box-shadow: 0 0 0 1px rgba(30,35,42,.2); }
+  .sheet .print { border: 1px solid var(--rule); background: var(--paper); border-radius: 4px; padding: 5px 12px; cursor: pointer; flex: none; }
+  @media print {
+    html, body { height: auto; overflow: visible; background: #fff; }
+    #view, .top, .bottom { display: none !important; }
+    .sheet { position: static; border: 0; padding: 0; overflow: visible; }
+    .sheet .print { display: none; }
+    .sheet .iface { break-inside: avoid; }
+    .sheet svg { max-height: none; }
+  }
+
   @media (max-width: 760px) {
     :root { --cell: 40px; --gap: 5px; --edge: 16px; }
+    .sheet .drawings { grid-template-columns: 1fr; }
+    .history { flex-wrap: wrap; }
+    .history .when { min-width: 0; flex-basis: 100%; order: 9; }
     .top { top: 16px; }
     .title { max-width: none; }
     .controls { align-items: stretch; width: 100%; }
-    .views button { flex: 1; padding: 8px 4px 7px; font-size: 14px; }
+    .views button { flex: 1; padding: 8px 2px 7px; font-size: 13px; }
     .views button kbd, .keys .hint, .cell small { display: none; }
     .bottom { bottom: 16px; }
   }
@@ -129,6 +188,7 @@
       <button role="tab" data-view="exploded"><kbd>2</kbd>Exploded</button>
       <button role="tab" data-view="single"><kbd>3</kbd>One by one</button>
       <button role="tab" data-view="matrix"><kbd>4</kbd>Matrix</button>
+      <button role="tab" data-view="interfaces"><kbd>5</kbd>Interfaces</button>
     </div>
     <div class="context" id="ctx-exploded" hidden>
       <label for="separation">Separation</label>
@@ -140,20 +200,44 @@
       <div class="who" aria-live="polite"><b id="single-name">Group 1</b><small id="single-time"></small></div>
       <button class="step" id="next" aria-label="Next group" title="Next group (→)">›</button>
     </div>
+    <div class="context sunpanel" id="ctx-sun" hidden>
+      <label for="sun-day">Date</label>
+      <input id="sun-day" type="range" min="1" max="365" step="1">
+      <output id="sun-day-out" for="sun-day"></output>
+      <button class="step" id="sun-play" aria-label="Play the day" title="Play the day">▶</button>
+      <label for="sun-time">Time</label>
+      <input id="sun-time" type="range" min="0" max="1439" step="5">
+      <output id="sun-time-out" for="sun-time"></output>
+      <small id="sun-info"></small>
+    </div>
   </div>
 </div>
 
 <div class="bottom">
+  <div class="history" id="history" hidden>
+    <button class="step" id="hist-prev" aria-label="Previous update" title="Previous update ([)">‹</button>
+    <button class="step" id="hist-play" aria-label="Replay every update from the start" title="Replay every update from the start">▶</button>
+    <div class="track">
+      <div class="ticks" id="hist-ticks"></div>
+      <input id="hist-range" type="range" min="0" max="0" step="1" aria-label="Update history">
+    </div>
+    <button class="step" id="hist-next" aria-label="Next update" title="Next update (])">›</button>
+    <div class="when" id="hist-when" aria-live="polite"></div>
+    <button class="live" id="hist-live" aria-pressed="true" title="Show the newest version of every group and follow new updates">● Live</button>
+  </div>
   <nav class="groups" id="groups" aria-label="Groups: click one to view it on its own"></nav>
   <div class="keys">
     <span class="hint">Drag to orbit, scroll to zoom, click a cube to open it</span><br>
     <button id="btn-update" title="Load the newest models now, without waiting for the cache (U)"><kbd>U</kbd> <span>Update</span></button>
     <button id="btn-rotate" aria-pressed="true" title="Slowly orbit the model (R)"><kbd>R</kbd> Rotate</button>
+    <button id="btn-sun" aria-pressed="false" title="Sunlight for a date and time (S)"><kbd>S</kbd> Sun</button>
     <button id="btn-color" title="Switch colors: model, groups, white (C)"><kbd>C</kbd> <span id="color-name">Model colors</span></button>
     <button id="btn-labels" aria-pressed="true" title="Show group labels (L)"><kbd>L</kbd> Labels</button>
     <button id="btn-fit" title="Frame the view (F)"><kbd>F</kbd> Fit</button>
   </div>
 </div>
+
+<section class="sheet" id="sheet" hidden></section>
 
 <script type="module">
 import * as THREE from 'three';
@@ -168,7 +252,12 @@ const POLL_MS = Math.max(3, Number(params.get('poll')) || 5) * 1000;
 const GROUPS = Math.max(1, Math.min(24, Math.round(Number(params.get('groups'))) || 8));
 const STATE_URL = params.get('api') || '/api/state';
 const FRESH_MS = 90 * 1000;
-const VIEWS = ['combined', 'exploded', 'single', 'matrix'];
+const VIEWS = ['combined', 'exploded', 'single', 'matrix', 'interfaces'];
+const num = (k, d) => (params.has(k) && Number.isFinite(Number(params.get(k))) ? Number(params.get(k)) : d);
+// Sun: Tainan by default. ?lat=&lon=&tz=&place= for elsewhere; ?north= (degrees, counter-clockwise)
+// if north in the Rhino model isn't +Y; ?sun=1&day=172&time=15:00 to start with the sun on.
+const LAT = num('lat', 22.99), LON = num('lon', 120.21), TZ = num('tz', 8), NORTH = num('north', 0);
+const PLACE = params.get('place') || (params.has('lat') ? '' : 'Tainan');
 
 document.getElementById('title').textContent = TITLE;
 document.title = TITLE;
@@ -230,7 +319,8 @@ controls.autoRotate = !matchMedia('(prefers-reduced-motion: reduce)').matches;
 controls.autoRotateSpeed = 0.35;
 controls.maxPolarAngle = Math.PI * 0.49;
 
-scene.add(new THREE.HemisphereLight('#ffffff', '#b9c0c8', 1.7));
+const hemi = new THREE.HemisphereLight('#ffffff', '#b9c0c8', 1.7);
+scene.add(hemi);
 const sun = new THREE.DirectionalLight('#ffffff', 2.2);
 sun.castShadow = true;
 sun.shadow.mapSize.set(4096, 4096);
@@ -271,12 +361,12 @@ function chipColor(slot) {
   return colorFor(slot.id, b.modelColor);
 }
 function recolor() {
-  for (const [id, b] of Object.entries(blocks)) {
-    b.raw.traverse((o) => { if (o.isMesh) o.material.color.set(colorFor(id, o.userData.modelColor)); });
-  }
+  for (const [id, b] of Object.entries(blocks)) paint(id, b.raw);
   document.getElementById('color-name').textContent = MODE_NAMES[mode];
   layout();
   renderGroups();
+  renderHistory(true);
+  renderInterfaces();
 }
 
 // ---------- loading .3dm files
@@ -364,26 +454,117 @@ async function buildGroup(id, url) {
   return { raw: group, modelColor: firstColor ?? null };
 }
 
-// Each model hangs in a holder placed at the model's centre, so the views can move
-// and scale every piece around its own centre.
-function addBlock(id, entry, raw, modelColor) {
-  const box = new THREE.Box3().setFromObject(raw);
-  const center = box.isEmpty() ? new THREE.Vector3() : box.getCenter(new THREE.Vector3());
-  const size = box.isEmpty() ? new THREE.Vector3() : box.getSize(new THREE.Vector3());
-  raw.position.copy(center).negate();
-  const holder = new THREE.Group();
-  holder.add(raw);
-  holder.scale.setScalar(0.001);   // grows in
-  holder.userData = { target: new THREE.Vector3(), scale: 1, snap: true };
-  scene.add(holder);
-  blocks[id] = { url: entry.url, raw, holder, box, center, size, modelColor, publishedAt: entry.publishedAt };
+// ---------- versions
+// Every published version of every group, as the server lists them (oldest first). Each model is
+// loaded once per URL and kept, so stepping back and forth through history is instant.
+const groupVersions = {};   // id -> [{ url, size, publishedAt }]
+const modelCache = {};      // url -> Promise<{ raw, box, center, size, modelColor }>
+function loadModel(id, url) {
+  if (!modelCache[url]) {
+    const p = buildGroup(id, url).then(({ raw, modelColor }) => {
+      const box = new THREE.Box3().setFromObject(raw);
+      const center = box.isEmpty() ? new THREE.Vector3() : box.getCenter(new THREE.Vector3());
+      const size = box.isEmpty() ? new THREE.Vector3() : box.getSize(new THREE.Vector3());
+      raw.position.copy(center).negate();   // hang the model around its centre inside the holder
+      return { raw, box, center, size, modelColor };
+    });
+    p.catch(() => { if (modelCache[url] === p) delete modelCache[url]; });
+    modelCache[url] = p;
+  }
+  return modelCache[url];
 }
-function removeBlock(id) {
+function disposeModel(url) {
+  const p = modelCache[url];
+  delete modelCache[url];
+  p?.then((m) => m.raw.traverse((o) => {
+    o.geometry?.dispose();
+    if (o.material && o.material !== edgeMat && o.material !== curveMat) o.material.dispose();
+  }), () => {});
+}
+function paint(id, raw) {
+  raw.traverse((o) => { if (o.isMesh) o.material.color.set(colorFor(id, o.userData.modelColor)); });
+}
+
+// Each group on screen hangs its current model in a holder placed at the model's centre, so the
+// views can move and scale every piece around its own centre.
+function showModel(id, m, idx) {
+  let b = blocks[id];
+  if (!b) {
+    const holder = new THREE.Group();
+    holder.scale.setScalar(0.001);   // grows in
+    holder.userData = { target: new THREE.Vector3(), scale: 1, snap: true };
+    scene.add(holder);
+    b = blocks[id] = { holder };
+  }
+  if (b.raw !== m.raw) {
+    if (b.raw) b.holder.remove(b.raw);
+    paint(id, m.raw);
+    b.holder.add(m.raw);
+  }
+  const v = groupVersions[id][idx];
+  Object.assign(b, { url: v.url, publishedAt: v.publishedAt, version: idx, versionCount: groupVersions[id].length,
+    raw: m.raw, box: m.box, center: m.center, size: m.size, modelColor: m.modelColor });
+}
+function hideBlock(id) {
   const b = blocks[id];
   if (!b) return;
+  if (b.raw) b.holder.remove(b.raw);
   scene.remove(b.holder);
-  b.raw.traverse((o) => { o.geometry?.dispose(); if (o.material && o.material !== edgeMat && o.material !== curveMat) o.material.dispose(); });
   delete blocks[id];
+}
+
+// ---------- history: which version each group shows
+let historyAt = null;       // null = live (newest of everything); otherwise a time in ms
+const versionTime = (v) => Date.parse(v.publishedAt) || 0;
+function versionIndexAt(id, t) {
+  const vs = groupVersions[id];
+  if (t === null) return vs.length - 1;
+  let idx = -1;
+  for (let i = 0; i < vs.length; i++) if (versionTime(vs[i]) <= t) idx = i;
+  return idx;
+}
+// Every update in order: [{ id, idx, at }]
+function allUpdates() {
+  const list = [];
+  for (const [id, vs] of Object.entries(groupVersions)) vs.forEach((v, idx) => list.push({ id, idx, at: versionTime(v) }));
+  return list.sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1));
+}
+
+// Bring the scene in line with groupVersions and the history position. Resolves to true if anything changed.
+let syncToken = 0;
+async function sync() {
+  const token = ++syncToken;
+  const wanted = {};
+  for (const id of Object.keys(groupVersions)) {
+    const idx = versionIndexAt(id, historyAt);
+    if (idx >= 0) wanted[id] = idx;
+  }
+  const loaded = await Promise.all(Object.entries(wanted).map(([id, idx]) =>
+    loadModel(id, groupVersions[id][idx].url).then((m) => ({ id, idx, m }),
+      (err) => { console.warn(`Could not load ${id} version ${idx + 1}:`, err); return null; })));
+  if (token !== syncToken) return false;   // a newer request (more scrubbing) takes over
+  let changed = false;
+  for (const id of Object.keys(blocks)) if (!(id in wanted)) { hideBlock(id); changed = true; }
+  for (const r of loaded) {
+    if (!r) continue;
+    const b = blocks[r.id];
+    if (!b || b.raw !== r.m.raw || b.version !== r.idx || b.versionCount !== groupVersions[r.id].length) {
+      showModel(r.id, r.m, r.idx);
+      changed = true;
+    }
+  }
+  return changed;
+}
+
+// Re-lay out everything after the set of models on screen changed.
+function refreshScene(refit = false) {
+  const before = currentBounds.getSize(new THREE.Vector3()).length();
+  const box = layout();
+  if (refit || Math.abs(box.getSize(new THREE.Vector3()).length() - before) / before > 0.15) frame(box);
+  renderGroups();
+  renderStatus();
+  renderHistory();
+  renderInterfaces();
 }
 
 // ---------- slots: Group 1..N, plus any other published IDs
@@ -467,7 +648,7 @@ function layout() {
       let target = inCombined, scale = 1;
       if (view === 'exploded') { target = inCombined.clone().addScaledVector(b.center.clone().sub(cc), explode); target.z += lift; }
       else if (view === 'matrix') target = c.clone().setZ(half);
-      else if (view === 'single') { if (s.key === selected) target = new THREE.Vector3(0, 0, half); else scale = 0; }
+      else if (view === 'single' || view === 'interfaces') { if (s.key === selected) target = new THREE.Vector3(0, 0, half); else scale = 0; }
       const h = b.holder.userData;
       h.target.copy(target); h.scale = scale;
       if (h.snap) { b.holder.position.copy(target); h.snap = false; }
@@ -515,6 +696,7 @@ function layout() {
 
   fitShadows(bounds.clone().union(grid));
   currentBounds = bounds;
+  updateSunPath();
   renderContext();
   return bounds;
 }
@@ -539,17 +721,24 @@ function frame(box = currentBounds, dir = camGoal?.dir || camera.position.clone(
   }
   camGoal = { target: c, dist: Math.max(dist, 0.1), dir: dir.clone() };
 }
+const STUDIO_DIR = new THREE.Vector3(-0.55, -0.75, 1.05).normalize();
+const lightDir = STUDIO_DIR.clone();
+let lightAlt = Math.PI / 4;           // the light's height above the horizon
+let shadowBox = currentBounds.clone();
 function fitShadows(box) {
+  shadowBox = box.clone();
   const c = box.getCenter(new THREE.Vector3());
   const r = Math.max(box.getSize(new THREE.Vector3()).length() / 2, 1);
+  const low = Math.max(Math.sin(lightAlt), 0.06);   // a low sun casts long shadows
   sun.target.position.copy(c);
-  sun.position.copy(c).add(new THREE.Vector3(-0.55, -0.75, 1.05).normalize().multiplyScalar(r * 2.5));
+  sun.position.copy(c).addScaledVector(lightDir, r * 3);
   const s = sun.shadow.camera;
-  s.left = -r; s.right = r; s.top = r; s.bottom = -r; s.near = r * 0.1; s.far = r * 6;
+  s.left = -r; s.right = r; s.top = r; s.bottom = -r; s.near = r * 0.1; s.far = r * 4 + 2 * r / low;
   s.updateProjectionMatrix();
   sun.shadow.normalBias = r * 0.002;
   ground.position.set(c.x, c.y, -r * 0.0005);
-  ground.scale.set(r * 10, r * 10, 1);
+  const g = Math.max(r * 10, 6 * r / low);
+  ground.scale.set(g, g, 1);
 }
 addEventListener('resize', () => { resize(); frame(layout()); });
 
@@ -569,19 +758,24 @@ function setView(v, opts = {}) {
   if (opts.group) selected = opts.group;
   for (const t of tabs) t.setAttribute('aria-selected', t.dataset.view === view);
   ctxExploded.hidden = view !== 'exploded';
-  ctxSingle.hidden = view !== 'single';
+  ctxSingle.hidden = view !== 'single' && view !== 'interfaces';
+  sheetEl.hidden = view !== 'interfaces';
   // The matrix reads best from the front and standing still; the other views from the corner, orbiting.
   const box = layout();
   if (view === 'matrix') frame(box, MATRIX_DIR);
   else if (from === 'matrix' || from === null) frame(box, DEFAULT_DIR);
   else frame(box);
   controls.autoRotate = rotateWanted && view !== 'matrix';
-  history.replaceState(null, '', `${location.search}#${view}${view === 'single' ? '-' + encodeURIComponent(selected) : ''}`);
+  const withGroup = view === 'single' || view === 'interfaces';
+  history.replaceState(null, '', `${location.search}#${view}${withGroup ? '-' + encodeURIComponent(selected) : ''}`);
   renderGroups();
+  renderInterfaces();
 }
+// One by one and Interfaces both show one group; picking a group keeps you in whichever is open.
+const groupView = () => (view === 'interfaces' ? 'interfaces' : 'single');
 function step(d) {
   const i = Math.max(0, slotList.findIndex((s) => s.key === selected));
-  setView('single', { group: slotList[(i + d + slotList.length) % slotList.length].key });
+  setView(groupView(), { group: slotList[(i + d + slotList.length) % slotList.length].key });
 }
 tabs.forEach((t) => { t.onclick = () => setView(t.dataset.view); });
 document.getElementById('prev').onclick = () => step(-1);
@@ -597,7 +791,10 @@ function renderContext() {
   if (!s) return;
   const b = s.id && blocks[s.id];
   document.getElementById('single-name').textContent = s.name;
-  document.getElementById('single-time').textContent = b ? `published ${timeAgo(b.publishedAt)}` : 'not published yet';
+  let text = !b ? (historyAt === null ? 'not published yet' : 'not published yet at that time')
+    : `published ${historyAt === null ? timeAgo(b.publishedAt) : 'at ' + clock(b.publishedAt)}`;
+  if (b && b.versionCount > 1) text = `version ${b.version + 1} of ${b.versionCount}, ${text}`;
+  document.getElementById('single-time').textContent = text;
 }
 
 // ---------- group chips (status board + selector)
@@ -622,14 +819,14 @@ function renderGroups() {
     }
     const b = s.id && blocks[s.id];
     el.dataset.key = s.key;
-    el.onclick = () => setView('single', { group: s.key });
+    el.onclick = () => setView(groupView(), { group: s.key });
     el.querySelector('b').textContent = s.short;
-    el.querySelector('small').textContent = b ? timeAgo(b.publishedAt).replace(' ago', '') : '';
+    el.querySelector('small').textContent = !b ? '' : historyAt === null ? timeAgo(b.publishedAt).replace(' ago', '') : clock(b.publishedAt);
     el.classList.toggle('on', !!b);
-    el.classList.toggle('fresh', !!b && Date.now() - new Date(b.publishedAt) < FRESH_MS);
+    el.classList.toggle('fresh', !!b && historyAt === null && Date.now() - new Date(b.publishedAt) < FRESH_MS);
     el.style.setProperty('--c', chipColor(s));
     el.style.setProperty('--fg', textOn(chipColor(s)));
-    el.setAttribute('aria-current', view === 'single' && s.key === selected);
+    el.setAttribute('aria-current', (view === 'single' || view === 'interfaces') && s.key === selected);
     el.title = b ? `${s.name}, published ${new Date(b.publishedAt).toLocaleTimeString()}` : `${s.name}, not published yet`;
   });
 }
@@ -644,7 +841,8 @@ function renderStatus() {
   if (statusEl.classList.contains('error')) return;
   const n = slotList.filter((s) => s.id).length;
   let text;
-  if (n === 0) text = 'No groups yet. Press Publish in Rhino and your cube appears here.';
+  if (historyAt !== null) text = `Looking back at ${clock(historyAt)}: ${n} of ${Math.max(GROUPS, slotList.length)} groups had published by then. Press Live to return.`;
+  else if (n === 0) text = 'No groups yet. Press Publish in Rhino and your cube appears here.';
   else text = `${n} of ${Math.max(GROUPS, slotList.length)} groups published.` +
     (lastEvent ? ` ${slotName(lastEvent.id)} updated at ${clock(lastEvent.at)}.` : '');
   if (statusNote && Date.now() < statusNote.until) text += ` ${statusNote.text}`;
@@ -678,6 +876,7 @@ async function poll(fresh = false) {
   if (fresh) { btnUpdate.disabled = true; btnUpdate.querySelector('span').textContent = 'Updating…'; }
   let changed = firstLoad;
   const updated = [];
+  const stale = [];   // URLs of versions the server no longer lists
   try {
     const res = await fetch(stateUrl(fresh), { cache: 'no-store' });
     if (!res.ok) throw new Error(`Server answered ${res.status}`);
@@ -696,40 +895,46 @@ async function poll(fresh = false) {
         : `Checked for updates at ${clock(new Date())}.` };
     }
     if (entries) {
-      for (const id of Object.keys(blocks)) if (!entries[id]) { removeBlock(id); changed = true; }
-      for (const [id, entry] of Object.entries(entries)) {
-        if (blocks[id] && blocks[id].url === entry.url) continue;
-        try {
-          const { raw, modelColor } = await buildGroup(id, entry.url);
-          const wasThere = !!blocks[id];
-          removeBlock(id);
-          addBlock(id, entry, raw, modelColor);
-          if (!firstLoad || wasThere) { lastEvent = { id, at: entry.publishedAt }; updated.push(id); }
-          changed = true;
-        } catch (err) {
-          console.warn(`Could not load ${id}:`, err);
-        }
+      // Every version per group, oldest first (older servers only send the newest one).
+      const next = {};
+      for (const [id, e] of Object.entries(entries)) {
+        const vs = (Array.isArray(e.versions) && e.versions.length ? e.versions : [e]).filter((v) => v && v.url)
+          .map((v) => ({ url: v.url, size: v.size, publishedAt: v.publishedAt }))
+          .sort((a, b) => versionTime(a) - versionTime(b));
+        if (vs.length) next[id] = vs;
       }
+      const keep = new Set(Object.values(next).flat().map((v) => v.url));
+      for (const url of Object.keys(modelCache)) if (!keep.has(url)) stale.push(url);
+      for (const [id, vs] of Object.entries(next)) {
+        const before = groupVersions[id];
+        const latest = vs[vs.length - 1];
+        const newLatest = !before || before[before.length - 1].url !== latest.url;
+        if (newLatest || before.length !== vs.length) changed = true;
+        if (newLatest && !firstLoad) { lastEvent = { id, at: latest.publishedAt }; updated.push(id); }
+      }
+      for (const id of Object.keys(groupVersions)) if (!next[id]) { delete groupVersions[id]; changed = true; }
+      Object.assign(groupVersions, next);
       if (!lastEvent) {
-        const latest = Object.entries(entries).sort((a, b) => new Date(b[1].publishedAt) - new Date(a[1].publishedAt))[0];
-        if (latest) lastEvent = { id: latest[0], at: latest[1].publishedAt };
+        const latest = allUpdates().pop();
+        if (latest) lastEvent = { id: latest.id, at: latest.at };
       }
+      if (changed) await sync();
     }
   } catch (err) {
     statusEl.classList.add('error');
     statusEl.textContent = `Can't reach the server (${err.message}). Retrying every ${POLL_MS / 1000} s.`;
   } finally {
     if (changed) {
-      const before = currentBounds.getSize(new THREE.Vector3()).length();
-      const box = layout();
-      // Re-frame on first load, or when the scene changed size noticeably.
-      if (firstLoad || Math.abs(box.getSize(new THREE.Vector3()).length() - before) / before > 0.15) frame(box);
+      refreshScene(firstLoad);   // re-frames on first load, or when the scene changed size noticeably
       if (firstLoad) snapCamera();
+    } else {
+      renderGroups();
+      renderStatus();
+      renderHistory();
     }
+    for (const url of stale) if (!Object.values(blocks).some((b) => b.url === url)) disposeModel(url);
     firstLoad = false;
     polling = false;
-    renderGroups();
-    renderStatus();
     updated.forEach(pulse);
     if (fresh) { btnUpdate.disabled = false; btnUpdate.querySelector('span').textContent = 'Update'; }
     if (freshQueued) { freshQueued = false; poll(true); }
@@ -749,7 +954,7 @@ renderer.domElement.addEventListener('pointerup', (e) => {
   const hit = raycaster.intersectObjects(meshes, false)[0];
   if (!hit) return;
   const slot = slotList.find((s) => s.id === hit.object.userData.blockId);
-  if (slot && !(view === 'single' && slot.key === selected)) setView('single', { group: slot.key });
+  if (slot && !(view === groupView() && slot.key === selected)) setView(groupView(), { group: slot.key });
 });
 
 // ---------- display controls
@@ -770,9 +975,13 @@ addEventListener('keydown', (e) => {
   if (e.target.closest('button, input') && (e.key === 'Enter' || e.key === ' ')) return;
   if (e.target.matches('input') && e.key.startsWith('Arrow')) return;
   const k = e.key.toLowerCase();
-  if (k >= '1' && k <= '4' && k.length === 1) setView(VIEWS[Number(k) - 1]);
-  else if (k === 'arrowright') step(view === 'single' ? 1 : 0);
-  else if (k === 'arrowleft') step(view === 'single' ? -1 : 0);
+  const inGroup = view === 'single' || view === 'interfaces';
+  if (k >= '1' && k <= '5' && k.length === 1) setView(VIEWS[Number(k) - 1]);
+  else if (k === 'arrowright') step(inGroup ? 1 : 0);
+  else if (k === 'arrowleft') step(inGroup ? -1 : 0);
+  else if (k === '[') stepHistory(-1);
+  else if (k === ']') stepHistory(1);
+  else if (k === 's') setSun(!sunOn);
   else if (k === 'r') setRotate(!rotateWanted);
   else if (k === 'c') nextMode();
   else if (k === 'l') btnLabels.click();
@@ -782,6 +991,396 @@ addEventListener('keydown', (e) => {
 // Steering by hand stops the camera glide and pauses the orbit for 20 s.
 controls.addEventListener('start', () => { camGoal = null; controls.autoRotate = false; clearTimeout(resumeTimer); });
 controls.addEventListener('end', () => { resumeTimer = setTimeout(() => { controls.autoRotate = rotateWanted && view !== 'matrix'; }, 20000); });
+
+// ---------- history bar: step through every update
+const histEl = document.getElementById('history');
+const histRange = document.getElementById('hist-range');
+const histTicks = document.getElementById('hist-ticks');
+const histWhen = document.getElementById('hist-when');
+const histLive = document.getElementById('hist-live');
+const histPlay = document.getElementById('hist-play');
+let replayTimer = null;
+let ticksKey = '';
+// Position of what's on screen in the list of updates.
+function historyIndex(updates) {
+  if (historyAt === null) return updates.length - 1;
+  let i = 0;
+  updates.forEach((u, k) => { if (u.at <= historyAt) i = k; });
+  return i;
+}
+function renderHistory(force = false) {
+  const updates = allUpdates();
+  histEl.hidden = updates.length < 2;
+  if (histEl.hidden) return;
+  const i = historyIndex(updates);
+  histRange.max = updates.length - 1;
+  histRange.value = i;
+  const key = updates.map((u) => u.id + ':' + u.idx).join() + mode;
+  if (force || key !== ticksKey) {
+    ticksKey = key;
+    histTicks.replaceChildren(...updates.map((u, k) => {
+      const t = document.createElement('i');
+      t.style.left = `${(k / (updates.length - 1)) * 100}%`;
+      t.style.setProperty('--c', mode === 'model' && blocks[u.id]?.modelColor ? blocks[u.id].modelColor : groupColor(u.id));
+      t.title = `${slotName(u.id)}, version ${u.idx + 1}, ${clock(u.at)}`;
+      return t;
+    }));
+  }
+  const u = updates[i];
+  const b = document.createElement('b');
+  if (historyAt === null) {
+    b.textContent = 'Live';
+    histWhen.replaceChildren(b, ` · ${updates.length} updates so far`);
+  } else {
+    b.textContent = `Update ${i + 1} of ${updates.length}`;
+    histWhen.replaceChildren(b, ` · ${slotName(u.id)} v${u.idx + 1} · ${clock(u.at)}`);
+  }
+  histLive.setAttribute('aria-pressed', historyAt === null);
+  histPlay.textContent = replayTimer ? '❚❚' : '▶';
+  histPlay.setAttribute('aria-label', replayTimer ? 'Pause the replay' : 'Replay every update from the start');
+}
+async function goToUpdate(i) {
+  const updates = allUpdates();
+  if (!updates.length) return;
+  i = Math.max(0, Math.min(updates.length - 1, i));
+  historyAt = i === updates.length - 1 ? null : updates[i].at;
+  renderHistory();
+  if (await sync()) {
+    refreshScene();
+    pulse(updates[i].id);
+  } else {
+    renderContext();
+    renderStatus();
+  }
+}
+function stepHistory(d) {
+  const i = historyIndex(allUpdates()) + d;
+  stopReplay();
+  goToUpdate(i);
+}
+function stopReplay() {
+  clearInterval(replayTimer);
+  replayTimer = null;
+  renderHistory();
+}
+// Replay: from the first update to now, one update per second.
+function startReplay() {
+  const start = historyAt === null ? 0 : historyIndex(allUpdates()) + 1;
+  goToUpdate(start);
+  replayTimer = setInterval(() => {
+    const updates = allUpdates();
+    const i = historyIndex(updates);
+    if (historyAt === null || i >= updates.length - 1) return stopReplay();
+    goToUpdate(i + 1);
+  }, 1000);
+  renderHistory();
+}
+histRange.oninput = () => { const i = Number(histRange.value); stopReplay(); goToUpdate(i); };
+document.getElementById('hist-prev').onclick = () => stepHistory(-1);
+document.getElementById('hist-next').onclick = () => stepHistory(1);
+histLive.onclick = () => { stopReplay(); goToUpdate(Infinity); };
+histPlay.onclick = () => (replayTimer ? stopReplay() : startReplay());
+
+// ---------- sun: position from place, date and time (NOAA's approximation, within a fraction of a degree)
+const ctxSun = document.getElementById('ctx-sun');
+const btnSun = document.getElementById('btn-sun');
+const sunDayEl = document.getElementById('sun-day');
+const sunTimeEl = document.getElementById('sun-time');
+const sunPlayBtn = document.getElementById('sun-play');
+const dayOfYear = (d) => Math.round((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - Date.UTC(d.getFullYear(), 0, 0)) / 864e5);
+let sunOn = params.get('sun') === '1';
+let sunDay = Math.max(1, Math.min(365, Math.round(num('day', dayOfYear(new Date())))));
+let sunMinutes = (() => {
+  const t = /^(\d{1,2}):(\d{2})$/.exec(params.get('time') || '');
+  return t ? Math.min(1439, Number(t[1]) * 60 + Number(t[2])) : 15 * 60;
+})();
+let sunPlaying = false;
+const SUN_PLAY = [5 * 60, 19.5 * 60];   // the day animation loops from 5:00 to 19:30
+
+function solarPosition(day, minutes) {
+  const g = 2 * Math.PI / 365 * (day - 1 + (minutes / 60 - 12) / 24);
+  const eqTime = 229.18 * (0.000075 + 0.001868 * Math.cos(g) - 0.032077 * Math.sin(g)
+    - 0.014615 * Math.cos(2 * g) - 0.040849 * Math.sin(2 * g));
+  const decl = 0.006918 - 0.399912 * Math.cos(g) + 0.070257 * Math.sin(g) - 0.006758 * Math.cos(2 * g)
+    + 0.000907 * Math.sin(2 * g) - 0.002697 * Math.cos(3 * g) + 0.00148 * Math.sin(3 * g);
+  const solarMinutes = minutes + eqTime + 4 * LON - 60 * TZ;
+  const hourAngle = THREE.MathUtils.degToRad(solarMinutes / 4 - 180);
+  const lat = THREE.MathUtils.degToRad(LAT);
+  const alt = Math.asin(Math.sin(lat) * Math.sin(decl) + Math.cos(lat) * Math.cos(decl) * Math.cos(hourAngle));
+  const az = Math.atan2(Math.sin(hourAngle), Math.cos(hourAngle) * Math.sin(lat) - Math.tan(decl) * Math.cos(lat)) + Math.PI;
+  return { alt, az };   // radians; azimuth clockwise from north
+}
+const northRad = THREE.MathUtils.degToRad(NORTH);
+const NORTH_VEC = new THREE.Vector3(-Math.sin(northRad), Math.cos(northRad), 0);
+const EAST_VEC = new THREE.Vector3(Math.cos(northRad), Math.sin(northRad), 0);
+function skyVector(alt, az) {
+  return new THREE.Vector3()
+    .addScaledVector(EAST_VEC, Math.sin(az) * Math.cos(alt))
+    .addScaledVector(NORTH_VEC, Math.cos(az) * Math.cos(alt))
+    .setZ(Math.sin(alt));
+}
+
+// Sun path for the day, the horizon and N/E/S/W around the model.
+const sunGroup = new THREE.Group();
+scene.add(sunGroup);
+const pathMat = new THREE.LineBasicMaterial({ color: '#d98a1c', transparent: true, opacity: 0.85 });
+const ringMat = new THREE.LineBasicMaterial({ color: '#8f99a3', transparent: true, opacity: 0.55 });
+const sunBall = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 16), new THREE.MeshBasicMaterial({ color: '#ffb52e' }));
+sunGroup.add(sunBall);
+const compass = {};
+for (const k of ['N', 'E', 'S', 'W']) {
+  const el = document.createElement('div');
+  el.className = 'label compass';
+  el.appendChild(Object.assign(document.createElement('span'), { textContent: k }));
+  compass[k] = new CSS2DObject(el);
+  scene.add(compass[k]);
+}
+let sunPathKey = '';
+function updateSunPath() {
+  sunGroup.visible = sunOn;
+  for (const l of Object.values(compass)) l.element.classList.toggle('show', sunOn);
+  if (!sunOn) return;
+  const c = currentBounds.getCenter(new THREE.Vector3()).setZ(0);
+  const R = Math.max(currentBounds.getSize(new THREE.Vector3()).length() * 0.62, nominal * 1.2);
+  const key = `${sunDay}|${R.toFixed(3)}|${c.x.toFixed(3)}|${c.y.toFixed(3)}`;
+  if (key !== sunPathKey) {
+    sunPathKey = key;
+    for (const o of [...sunGroup.children]) if (o !== sunBall) { o.geometry.dispose(); sunGroup.remove(o); }
+    const ring = [];
+    for (let k = 0; k <= 96; k++) ring.push(new THREE.Vector3(Math.cos(k / 48 * Math.PI), Math.sin(k / 48 * Math.PI), 0).multiplyScalar(R).add(c));
+    sunGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(ring), ringMat));
+    const path = [];
+    for (let m = 0; m <= 1440; m += 6) {
+      const p = solarPosition(sunDay, m);
+      if (p.alt > 0) path.push(skyVector(p.alt, p.az).multiplyScalar(R).add(c));
+    }
+    if (path.length > 1) sunGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(path), pathMat));
+    [['N', 0], ['E', 90], ['S', 180], ['W', 270]].forEach(([k, deg]) => {
+      compass[k].position.copy(skyVector(0, THREE.MathUtils.degToRad(deg)).multiplyScalar(R * 1.07).add(c));
+    });
+    sunBall.scale.setScalar(R * 0.04);
+  }
+  const p = solarPosition(sunDay, sunMinutes);
+  sunBall.visible = p.alt > 0;
+  sunBall.position.copy(skyVector(p.alt, p.az).multiplyScalar(R).add(c));
+}
+
+const COMPASS_8 = ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'];
+const hhmm = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(Math.floor(m % 60)).padStart(2, '0')}`;
+function renderSunPanel() {
+  ctxSun.hidden = !sunOn;
+  btnSun.setAttribute('aria-pressed', sunOn);
+  if (!sunOn) return;
+  sunDayEl.value = sunDay;
+  sunTimeEl.value = Math.round(sunMinutes);
+  document.getElementById('sun-day-out').textContent =
+    new Date(Date.UTC(2026, 0, sunDay)).toLocaleDateString([], { day: 'numeric', month: 'short', timeZone: 'UTC' });
+  document.getElementById('sun-time-out').textContent = hhmm(sunMinutes);
+  const p = solarPosition(sunDay, sunMinutes);
+  const alt = THREE.MathUtils.radToDeg(p.alt), az = THREE.MathUtils.radToDeg(p.az);
+  const where = PLACE ? `${PLACE}: ` : '';
+  document.getElementById('sun-info').textContent = alt <= 0
+    ? `${where}the sun is below the horizon`
+    : `${where}sun ${alt.toFixed(0)}° high in the ${COMPASS_8[Math.round(az / 45) % 8]} (${az.toFixed(0)}°)`;
+  sunPlayBtn.textContent = sunPlaying ? '❚❚' : '▶';
+  sunPlayBtn.setAttribute('aria-label', sunPlaying ? 'Pause the day' : 'Play the day');
+}
+// Studio light when the sun is off; otherwise the sun for the chosen date and time.
+function applyLight() {
+  if (!sunOn) {
+    lightDir.copy(STUDIO_DIR);
+    lightAlt = Math.PI / 4;
+    sun.intensity = 2.2;
+    sun.color.set('#ffffff');
+    hemi.intensity = 1.7;
+  } else {
+    const p = solarPosition(sunDay, sunMinutes);
+    const up = Math.sin(p.alt);
+    lightAlt = p.alt;
+    lightDir.copy(skyVector(p.alt, p.az)).normalize();
+    sun.intensity = 3.2 * THREE.MathUtils.smoothstep(up, -0.02, 0.1);
+    sun.color.set('#ffb070').lerp(new THREE.Color('#fff8ee'), THREE.MathUtils.smoothstep(up, 0.05, 0.5));
+    hemi.intensity = 0.45 + 1.0 * THREE.MathUtils.smoothstep(up, -0.1, 0.4);
+  }
+  fitShadows(shadowBox);
+  updateSunPath();
+  renderSunPanel();
+}
+function setSun(on) {
+  sunOn = on;
+  if (!on) sunPlaying = false;
+  applyLight();
+}
+btnSun.onclick = () => setSun(!sunOn);
+sunDayEl.oninput = () => { sunDay = Number(sunDayEl.value); applyLight(); };
+sunTimeEl.oninput = () => { sunPlaying = false; sunMinutes = Number(sunTimeEl.value); applyLight(); };
+sunPlayBtn.onclick = () => {
+  sunPlaying = !sunPlaying;
+  if (sunPlaying && (sunMinutes < SUN_PLAY[0] || sunMinutes >= SUN_PLAY[1])) sunMinutes = SUN_PLAY[0];
+  renderSunPanel();
+};
+
+// ---------- interfaces: 2D drawings of the faces where a group's cube touches another cube
+const sheetEl = document.getElementById('sheet');
+const SIDE_NAMES = [['west', 'east'], ['south', 'north'], ['bottom', 'top']];
+const AXIS = ['x', 'y', 'z'];
+const fmtLen = (m) => (Math.abs(m) >= 1 ? `${m.toFixed(2)} m` : `${(m * 100).toFixed(1)} cm`);
+const fmtArea = (a) => (a >= 0.1 ? `${a.toFixed(2)} m²` : `${(a * 1e4).toFixed(0)} cm²`);
+
+// Other cubes sitting against this one: they share a face plane (within 3% of a cube's size)
+// and overlap across it. A 2×2×2 arrangement gives every cube three.
+function contacts(id) {
+  const g = blocks[id];
+  if (!g || !g.box || g.box.isEmpty()) return [];
+  const tol = nominal * 0.03, minOverlap = nominal * 0.1;
+  const out = [];
+  for (const [hid, h] of Object.entries(blocks)) {
+    if (hid === id || !h.box || h.box.isEmpty()) continue;
+    for (let a = 0; a < 3; a++) {
+      const across = [(a + 1) % 3, (a + 2) % 3].every((k) =>
+        Math.min(g.box.max.getComponent(k), h.box.max.getComponent(k)) - Math.max(g.box.min.getComponent(k), h.box.min.getComponent(k)) >= minOverlap);
+      if (!across) continue;
+      const above = h.box.min.getComponent(a) - g.box.max.getComponent(a);
+      const below = g.box.min.getComponent(a) - h.box.max.getComponent(a);
+      if (Math.abs(above) < tol) out.push({ hid, a, side: 1, plane: g.box.max.getComponent(a) + above / 2, gap: above });
+      else if (Math.abs(below) < tol) out.push({ hid, a, side: 0, plane: g.box.min.getComponent(a) - below / 2, gap: below });
+    }
+  }
+  return out.sort((p, q) => p.a - q.a || p.side - q.side);
+}
+
+// Everything of a model that lies in the plane (filled), plus all its edges (those in the plane bold).
+function flatten(b, a, plane, tol, right, up) {
+  const s = b.raw.scale.x;   // model units → metres, the same space as b.box
+  const fills = [], edges = [];
+  let area = 0;
+  const p = new THREE.Vector3(), q = new THREE.Vector3(), r = new THREE.Vector3();
+  const uv = (v) => [v.dot(right), v.dot(up)];
+  const near = (v) => Math.abs(v.getComponent(a) - plane) < tol;
+  b.raw.traverse((o) => {
+    const pos = o.geometry?.attributes?.position;
+    if (!pos) return;
+    if (o.isMesh) {
+      const index = o.geometry.index;
+      const n = index ? index.count : pos.count;
+      const at = (i) => (index ? index.getX(i) : i);
+      for (let i = 0; i + 2 < n; i += 3) {
+        p.fromBufferAttribute(pos, at(i)).multiplyScalar(s);
+        q.fromBufferAttribute(pos, at(i + 1)).multiplyScalar(s);
+        r.fromBufferAttribute(pos, at(i + 2)).multiplyScalar(s);
+        if (!(near(p) && near(q) && near(r))) continue;
+        const t = [uv(p), uv(q), uv(r)];
+        fills.push(t);
+        area += Math.abs((t[1][0] - t[0][0]) * (t[2][1] - t[0][1]) - (t[2][0] - t[0][0]) * (t[1][1] - t[0][1])) / 2;
+      }
+    } else if (o.isLineSegments) {
+      for (let i = 0; i + 1 < pos.count; i += 2) {
+        p.fromBufferAttribute(pos, i).multiplyScalar(s);
+        q.fromBufferAttribute(pos, i + 1).multiplyScalar(s);
+        edges.push([...uv(p), ...uv(q), near(p) && near(q)]);
+      }
+    }
+  });
+  return { fills, edges, area };
+}
+// The rectangle a box covers in the drawing.
+function faceRect(box, right, up) {
+  let u0 = Infinity, u1 = -Infinity, v0 = Infinity, v1 = -Infinity;
+  for (let i = 0; i < 8; i++) {
+    const c = new THREE.Vector3(i & 1 ? box.max.x : box.min.x, i & 2 ? box.max.y : box.min.y, i & 4 ? box.max.z : box.min.z);
+    const u = c.dot(right), v = c.dot(up);
+    u0 = Math.min(u0, u); u1 = Math.max(u1, u); v0 = Math.min(v0, v); v1 = Math.max(v1, v);
+  }
+  return [u0, v0, u1, v1];
+}
+function svgDrawing(frame, layers, title) {
+  const [u0, v0, u1, v1] = frame;
+  const f = (n) => +n.toFixed(5);
+  const pt = (u, v) => `${f(u)},${f(-v)}`;
+  let out = `<svg viewBox="${f(u0)} ${f(-v1)} ${f(u1 - u0)} ${f(v1 - v0)}" xmlns="http://www.w3.org/2000/svg" role="img"><title>${title}</title>`;
+  for (const L of layers) {
+    if (L.rect) {
+      const [a0, b0, a1, b1] = L.rect;
+      out += `<rect x="${f(a0)}" y="${f(-b1)}" width="${f(a1 - a0)}" height="${f(b1 - b0)}" fill="none" stroke="#b9c1c8" stroke-width="1" stroke-dasharray="5 4"/>`;
+    }
+    if (L.fills && L.fills.length) {
+      out += `<g fill="${L.color}" stroke="${L.color}" stroke-width="0.75" opacity="${L.opacity}" style="mix-blend-mode:multiply">`;
+      for (const t of L.fills) out += `<polygon points="${t.map(([u, v]) => pt(u, v)).join(' ')}"/>`;
+      out += '</g>';
+    }
+    if (L.edges) {
+      let back = '', front = '';
+      for (const [a, b, c, d, on] of L.edges) {
+        const seg = `M${pt(a, b)}L${pt(c, d)}`;
+        if (on) front += seg; else if (L.back) back += seg;
+      }
+      if (back) out += `<path d="${back}" fill="none" stroke="#a9b2bb" stroke-width="0.8"/>`;
+      if (front) out += `<path d="${front}" fill="none" stroke="${L.ink || '#1e232a'}" stroke-width="1.6" stroke-linecap="round"/>`;
+    }
+  }
+  return out + '</svg>';
+}
+
+function placeSheet() {
+  const top = document.querySelector('.top').getBoundingClientRect().bottom + 12;
+  const bottom = innerHeight - document.querySelector('.bottom').getBoundingClientRect().top + 12;
+  sheetEl.style.setProperty('--sheet-top', `${Math.round(top)}px`);
+  sheetEl.style.setProperty('--sheet-bottom', `${Math.round(bottom)}px`);
+}
+function renderInterfaces() {
+  if (view !== 'interfaces') return;
+  placeSheet();
+  const slot = slotList.find((x) => x.key === selected);
+  const b = slot && slot.id && blocks[slot.id];
+  const when = historyAt === null ? '' : ` at ${clock(historyAt)}`;
+  const head = `<header><div><h2>${slot ? slot.name : ''} · interfaces${when}</h2>
+    <p class="note">The faces where ${slot ? slot.name : 'this group'}'s cube touches another cube, drawn flat as seen from the neighbour.
+    Colour is the surface lying in the shared plane, dark lines its edges, grey lines edges further back.
+    The neighbour's face is mirrored so both drawings line up: overlaid, mixed colour is where the two faces meet.</p></div>
+    <button class="print" type="button">Print</button></header>`;
+  let body = '';
+  if (!b) {
+    body = `<p class="empty">${slot ? slot.name : 'This group'} hasn't published ${historyAt === null ? 'yet' : 'by then'}.</p>`;
+  } else {
+    const list = contacts(slot.id);
+    if (!list.length) body = `<p class="empty">No other cube touches ${slot.name}${historyAt === null ? ' yet' : ' at that time'}. A face counts once another group's cube sits against it.</p>`;
+    for (const c of list) {
+      const h = blocks[c.hid];
+      const sign = c.side ? 1 : -1;
+      const forward = new THREE.Vector3().setComponent(c.a, -sign);            // looking at the face from the neighbour
+      const up = c.a === 2 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(0, 0, 1);
+      const right = new THREE.Vector3().crossVectors(forward, up);
+      const tol = Math.max(nominal * 0.005, Math.abs(c.gap) / 2 + nominal * 0.003);
+      const mine = flatten(b, c.a, c.plane, tol, right, up);
+      const theirs = flatten(h, c.a, c.plane, tol, right, up);
+      const rectG = faceRect(b.box, right, up), rectH = faceRect(h.box, right, up);
+      const pad = Math.max(rectG[2] - rectG[0], rectG[3] - rectG[1]) * 0.08;
+      const frame = [Math.min(rectG[0], rectH[0]) - pad, Math.min(rectG[1], rectH[1]) - pad,
+        Math.max(rectG[2], rectH[2]) + pad, Math.max(rectG[3], rectH[3]) + pad];
+      const hSlot = slotList.find((x) => x.id === c.hid);
+      const nameG = slot.name, nameH = hSlot ? hSlot.name : c.hid;
+      const colG = chipColor(slot), colH = hSlot ? chipColor(hSlot) : groupColor(c.hid);
+      const myFace = SIDE_NAMES[c.a][c.side], theirFace = SIDE_NAMES[c.a][1 - c.side];
+      const gapNote = Math.abs(c.gap) > nominal * 0.002 ? ` · ${c.gap > 0 ? 'gap' : 'overlap'} ${fmtLen(Math.abs(c.gap))}` : '';
+      const size = `${fmtLen(rectG[2] - rectG[0])} × ${fmtLen(rectG[3] - rectG[1])}`;
+      body += `<div class="iface">
+        <h3>${c.a === 2 ? (c.side ? 'Top' : 'Bottom') : myFace[0].toUpperCase() + myFace.slice(1)} face, against ${nameH}
+          <small>· plane ${AXIS[c.a]} = ${fmtLen(c.plane)}${gapNote}</small></h3>
+        <div class="drawings">
+          <figure>${svgDrawing(frame, [{ rect: rectG }, { fills: mine.fills, color: colG, opacity: 0.9 }, { edges: mine.edges, back: true }], `${nameG}, ${myFace} face`)}
+            <figcaption><span class="swatch" style="--c:${colG}"></span><b>${nameG}</b> <span>${myFace} face, ${size} · touching ${fmtArea(mine.area)}</span></figcaption></figure>
+          <figure>${svgDrawing(frame, [{ rect: rectH }, { fills: theirs.fills, color: colH, opacity: 0.9 }, { edges: theirs.edges, back: true }], `${nameH}, ${theirFace} face`)}
+            <figcaption><span class="swatch" style="--c:${colH}"></span><b>${nameH}</b> <span>${theirFace} face, mirrored to line up · touching ${fmtArea(theirs.area)}</span></figcaption></figure>
+          <figure>${svgDrawing(frame, [{ rect: rectG }, { fills: mine.fills, color: colG, opacity: 0.6 }, { fills: theirs.fills, color: colH, opacity: 0.6 },
+            { edges: mine.edges }, { edges: theirs.edges, ink: '#5b6470' }], `${nameG} and ${nameH} overlaid`)}
+            <figcaption><b>Both overlaid</b> <span>mixed colour = the faces meet; one colour only = that face has nothing to touch there</span></figcaption></figure>
+        </div></div>`;
+    }
+  }
+  sheetEl.innerHTML = head + body;
+  sheetEl.querySelector('.print').onclick = () => print();
+}
+addEventListener('resize', () => renderInterfaces());
 
 // ---------- animation
 function snapCamera() {
@@ -794,6 +1393,11 @@ const timer = new THREE.Clock();
 renderer.setAnimationLoop(() => {
   const dt = Math.min(timer.getDelta(), 0.1);
   const a = 1 - Math.exp(-dt * 7);
+  if (sunOn && sunPlaying) {   // one hour of daylight per second
+    sunMinutes += dt * 60;
+    if (sunMinutes >= SUN_PLAY[1]) sunMinutes = SUN_PLAY[0];
+    applyLight();
+  }
   for (const b of Object.values(blocks)) {
     const h = b.holder, u = h.userData;
     h.position.lerp(u.target, a);
@@ -824,12 +1428,13 @@ renderer.setAnimationLoop(() => {
   labelRenderer.render(scene, camera);
 });
 
+applyLight();
 setView(view);
 snapCamera();
 from = view;
 poll();
 setInterval(poll, POLL_MS);
-setInterval(() => { renderGroups(); renderContext(); renderStatus(); }, 15000);
+setInterval(() => { renderGroups(); renderContext(); renderStatus(); renderHistory(); }, 15000);
 </script>
 </body>
 </html>

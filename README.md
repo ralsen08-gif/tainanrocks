@@ -27,6 +27,7 @@ Rhino (optional)    ◀───────────  /api/state  (WorkshopS
 | `lib/manifest.js` | Shared storage logic |
 | `rhino/WorkshopPublish.py` | The Publish button for students (Rhino 7 and 8, Windows and Mac) |
 | `rhino/WorkshopSync.py` | Optional: shows all published pieces inside your own Rhino |
+| `rhino/RandomVoidCube.py` | Makes a 0.45 m cube with random organic voids (caves) as one closed polysurface; options for void percentage, cave size and a seed to repeat a result |
 
 ## Set up (once, about 10 minutes)
 

@@ -120,6 +120,12 @@
   .sunpanel small { grid-column: 1 / -1; color: var(--muted); }
   .label.compass span { background: none; box-shadow: none; color: var(--ink); padding: 0; font-size: 14px; }
 
+  /* animals' speech bubbles */
+  .emote { opacity: 0; transition: opacity .25s; pointer-events: none; }
+  .emote.show { opacity: 1; }
+  .emote span { display: block; padding: 4px 9px 3px; background: #fff; color: var(--ink); border: 1.5px solid var(--ink);
+    border-radius: 10px; font: 700 13px/1.15 'Archivo', system-ui, sans-serif; white-space: nowrap; box-shadow: 0 2px 0 rgba(30,35,42,.2); }
+
   /* interfaces sheet */
   .sheet { position: fixed; left: var(--edge); right: var(--edge); top: var(--sheet-top, 150px); bottom: var(--sheet-bottom, 120px);
     overflow: auto; background: #fff; border: 1px solid var(--rule); border-radius: 8px; padding: 18px 22px; }
@@ -231,6 +237,7 @@
     <button id="btn-update" title="Load the newest models now, without waiting for the cache (U)"><kbd>U</kbd> <span>Update</span></button>
     <button id="btn-rotate" aria-pressed="true" title="Slowly orbit the model (R)"><kbd>R</kbd> Rotate</button>
     <button id="btn-sun" aria-pressed="false" title="Sunlight for a date and time (S)"><kbd>S</kbd> Sun</button>
+    <button id="btn-animals" aria-pressed="false" title="Taiwanese animals living on the cubes (A)"><kbd>A</kbd> Animals</button>
     <button id="btn-color" title="Switch colors: model, groups, white (C)"><kbd>C</kbd> <span id="color-name">Model colors</span></button>
     <button id="btn-labels" aria-pressed="true" title="Show group labels (L)"><kbd>L</kbd> Labels</button>
     <button id="btn-fit" title="Frame the view (F)"><kbd>F</kbd> Fit</button>
@@ -949,6 +956,12 @@ renderer.domElement.addEventListener('pointerup', (e) => {
   if (!downAt || Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 5) return;
   const p = new THREE.Vector2((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
   raycaster.setFromCamera(p, camera);
+  if (animalsOn) {   // poking an animal makes it jump and say who it is
+    const bodies = [];
+    for (const c of critters) if (c.root.visible) c.root.traverse((o) => { if (o.isMesh && o.userData.critter) bodies.push(o); });
+    const poked = raycaster.intersectObjects(bodies, false)[0];
+    if (poked) { poked.object.userData.critter.poke(); return; }
+  }
   const meshes = [];
   for (const b of Object.values(blocks)) if (b.holder.visible) b.raw.traverse((o) => { if (o.isMesh) meshes.push(o); });
   const hit = raycaster.intersectObjects(meshes, false)[0];
@@ -982,6 +995,7 @@ addEventListener('keydown', (e) => {
   else if (k === '[') stepHistory(-1);
   else if (k === ']') stepHistory(1);
   else if (k === 's') setSun(!sunOn);
+  else if (k === 'a') setAnimals(!animalsOn);
   else if (k === 'r') setRotate(!rotateWanted);
   else if (k === 'c') nextMode();
   else if (k === 'l') btnLabels.click();
@@ -1382,6 +1396,377 @@ function renderInterfaces() {
 }
 addEventListener('resize', () => renderInterfaces());
 
+// ---------- animals: chibi Taiwanese wildlife living on the cubes (A)
+// Original characters built from simple shapes: toon shading, dark outlines, big shiny eyes and
+// blush. Walkers hop between places to stand on the cubes (tops and cave floors); magpies fly
+// and perch. They ride along when the cubes move between views.
+const btnAnimals = document.getElementById('btn-animals');
+let animalsOn = params.get('animals') === '1';
+const critterLayer = new THREE.Group();
+scene.add(critterLayer);
+const critters = [];
+
+const TOON_STEPS = (() => {
+  const t = new THREE.DataTexture(new Uint8Array([105, 185, 255]), 3, 1, THREE.RedFormat);
+  t.minFilter = t.magFilter = THREE.NearestFilter;
+  t.needsUpdate = true;
+  return t;
+})();
+const toonMats = {};
+const toonMat = (c) => (toonMats[c] ||= new THREE.MeshToonMaterial({ color: c, gradientMap: TOON_STEPS }));
+const flatMat = (c) => (toonMats['flat' + c] ||= new THREE.MeshBasicMaterial({ color: c }));
+const OUTLINE = new THREE.MeshBasicMaterial({ color: '#1e232a', side: THREE.BackSide });
+const BLUSH = new THREE.MeshBasicMaterial({ color: '#ff8fa3', transparent: true, opacity: 0.7 });
+const SPH = new THREE.SphereGeometry(1, 18, 12);
+const CONE = new THREE.ConeGeometry(1, 1, 14);
+const ARC = new THREE.TorusGeometry(1, 0.16, 8, 18, Math.PI);
+
+// One body part: a toon-shaded shape with an outline. Animals face +Y with Z up, about 1 unit tall.
+function blob(parent, color, pos, scale, { geo = SPH, outline = true, rot = null, mat = null } = {}) {
+  const g = new THREE.Group();
+  g.position.set(...pos);
+  g.scale.set(...scale);
+  if (rot) g.rotation.set(...rot);
+  const m = new THREE.Mesh(geo, mat || toonMat(color));
+  m.castShadow = true;
+  g.add(m);
+  if (outline) { const o = new THREE.Mesh(geo, OUTLINE); o.scale.setScalar(1.09); g.add(o); }
+  parent.add(g);
+  return g;
+}
+// Big anime eyes with a highlight, and blush on the cheeks. `ring` puts white around them (for dark faces).
+function face(head, y, z, spread, r, { ring = false, blush = true } = {}) {
+  for (const s of [-1, 1]) {
+    if (ring) blob(head, '', [s * spread, y - r * 0.2, z], [r * 1.35, r * 0.5, r * 1.55], { outline: false, mat: flatMat('#ffffff') });
+    blob(head, '', [s * spread, y, z], [r, r * 0.55, r * 1.25], { outline: false, mat: flatMat('#1e232a') });
+    blob(head, '', [s * spread + r * 0.3, y + r * 0.4, z + r * 0.45], [r * 0.36, r * 0.3, r * 0.36], { outline: false, mat: flatMat('#ffffff') });
+    if (blush) blob(head, '', [s * (spread + r * 1.25), y - r * 0.35, z - r * 1.25], [r * 0.85, r * 0.25, r * 0.45], { outline: false, mat: BLUSH });
+  }
+}
+const legs = (a, color, xs, ys, r) => { for (const x of xs) for (const y of ys) blob(a, color, [x, y, r * 0.8], [r, r, r * 0.85]); };
+
+const SPECIES = {
+  bear: {
+    name: 'Formosan black bear 臺灣黑熊', says: ['♪', '…', '♥', 'zzz', 'honey?'],
+    build(a) {
+      const fur = '#2a2a30';
+      blob(a, fur, [0, 0, 0.36], [0.4, 0.36, 0.36]);
+      legs(a, fur, [-0.21, 0.21], [-0.14, 0.16], 0.11);
+      for (const s of [-1, 1]) blob(a, '#f4f0e2', [s * 0.085, 0.33, 0.5], [0.12, 0.03, 0.035], { rot: [0, s * 0.62, 0], outline: false });
+      const head = new THREE.Group(); head.position.set(0, 0.12, 0.78); a.add(head);
+      blob(head, fur, [0, 0, 0], [0.3, 0.27, 0.27]);
+      for (const s of [-1, 1]) blob(head, fur, [s * 0.2, -0.02, 0.21], [0.09, 0.06, 0.09]);
+      blob(head, '#c9a27a', [0, 0.24, -0.07], [0.12, 0.08, 0.085]);
+      blob(head, '', [0, 0.31, -0.035], [0.045, 0.03, 0.033], { outline: false, mat: flatMat('#1e232a') });
+      face(head, 0.235, 0.06, 0.12, 0.05);
+      return { head };
+    },
+  },
+  cat: {
+    name: 'Leopard cat 石虎', says: ['nya!', '♪', '!', '…', '♥'],
+    build(a) {
+      const fur = '#d9a35c', spot = '#5c3b22', white = '#f6eee0';
+      blob(a, fur, [0, -0.02, 0.32], [0.24, 0.4, 0.24]);
+      legs(a, fur, [-0.13, 0.13], [-0.24, 0.2], 0.08);
+      for (const [x, y, z] of [[0.17, 0.1, 0.4], [-0.17, -0.05, 0.42], [0.15, -0.2, 0.38], [-0.12, 0.18, 0.46], [0.06, -0.28, 0.52], [-0.05, 0.02, 0.56]])
+        blob(a, spot, [x, y, z], [0.045, 0.06, 0.035], { outline: false });
+      const tail = new THREE.Group(); tail.position.set(0, -0.38, 0.36); a.add(tail);
+      [[0, -0.08, 0.04], [0, -0.17, 0.12], [0, -0.22, 0.22], [0, -0.24, 0.32]].forEach((p, i) =>
+        blob(tail, i % 2 ? spot : fur, p, [0.06 - i * 0.006, 0.06 - i * 0.006, 0.06 - i * 0.006]));
+      const head = new THREE.Group(); head.position.set(0, 0.38, 0.6); a.add(head);
+      blob(head, fur, [0, 0, 0], [0.26, 0.23, 0.22]);
+      for (const s of [-1, 1]) blob(head, fur, [s * 0.15, -0.02, 0.21], [0.08, 0.08, 0.13], { geo: CONE, rot: [Math.PI / 2, 0, s * 0.25] });
+      for (const s of [-1, 1]) blob(head, white, [s * 0.04, 0.17, 0.12], [0.018, 0.05, 0.07], { outline: false, rot: [0.5, 0, 0] });
+      blob(head, white, [0, 0.19, -0.08], [0.1, 0.06, 0.065]);
+      blob(head, '', [0, 0.25, -0.05], [0.03, 0.02, 0.022], { outline: false, mat: flatMat('#e27a8a') });
+      face(head, 0.2, 0.04, 0.1, 0.052);
+      return { head, tail };
+    },
+  },
+  macaque: {
+    name: 'Formosan rock macaque 臺灣獼猴', says: ['ook!', '!', '♪', '?', '…'],
+    build(a) {
+      const fur = '#8d7b67', skin = '#f0a69d';
+      blob(a, fur, [0, 0, 0.38], [0.29, 0.26, 0.34]);
+      legs(a, fur, [-0.15, 0.15], [0.02], 0.1);
+      for (const s of [-1, 1]) blob(a, fur, [s * 0.27, 0.1, 0.33], [0.07, 0.07, 0.19], { rot: [0.3, s * 0.2, 0] });
+      const tail = new THREE.Group(); tail.position.set(0, -0.27, 0.3); a.add(tail);
+      blob(tail, fur, [0, -0.06, 0.05], [0.05, 0.08, 0.05]);
+      const head = new THREE.Group(); head.position.set(0, 0.06, 0.82); a.add(head);
+      blob(head, fur, [0, 0, 0], [0.26, 0.24, 0.24]);
+      blob(head, skin, [0, 0.19, -0.03], [0.17, 0.07, 0.16], { outline: false });
+      for (const s of [-1, 1]) blob(head, skin, [s * 0.25, 0, 0.01], [0.06, 0.04, 0.075]);
+      blob(head, '', [0, 0.25, -0.08], [0.04, 0.02, 0.02], { outline: false, mat: flatMat('#b35e5a') });
+      face(head, 0.245, 0.03, 0.085, 0.045, { blush: false });
+      return { head, tail };
+    },
+  },
+  pangolin: {
+    name: 'Chinese pangolin 穿山甲', says: ['…', 'zzz', '♪', 'ants?', '!'],
+    build(a) {
+      const shell = '#9b6f45', band = '#6e4a2c', skin = '#c99a74';
+      blob(a, shell, [0, -0.02, 0.27], [0.26, 0.42, 0.25]);
+      for (let i = 0; i < 5; i++) blob(a, band, [0, 0.26 - i * 0.14, 0.27], [0.25 - Math.abs(i - 2) * 0.02, 0.25 - Math.abs(i - 2) * 0.02, 0.22], { geo: ARC, rot: [Math.PI / 2, 0, 0], outline: false });
+      legs(a, skin, [-0.15, 0.15], [-0.2, 0.18], 0.07);
+      const tail = new THREE.Group(); tail.position.set(0, -0.4, 0.2); a.add(tail);
+      blob(tail, shell, [0, -0.18, -0.06], [0.13, 0.42, 0.09], { geo: CONE, rot: [0, 0, Math.PI] });
+      const head = new THREE.Group(); head.position.set(0, 0.42, 0.3); a.add(head);
+      blob(head, skin, [0, 0, 0], [0.15, 0.17, 0.14]);
+      blob(head, skin, [0, 0.17, -0.03], [0.06, 0.13, 0.06], { geo: CONE, rot: [0, 0, 0] });
+      face(head, 0.12, 0.05, 0.07, 0.035);
+      return { head, tail };
+    },
+  },
+  magpie: {
+    name: 'Taiwan blue magpie 臺灣藍鵲', says: ['ga-ga!', '♪', '!', '♪♪', '♥'], flyer: true,
+    build(a) {
+      const blue = '#2c6fd8', dark = '#17181c', red = '#e2402f';
+      blob(a, blue, [0, 0, 0.36], [0.19, 0.28, 0.19], { rot: [0.35, 0, 0] });
+      blob(a, '#e9eef6', [0, 0.06, 0.29], [0.13, 0.18, 0.12], { outline: false });
+      for (const s of [-1, 1]) blob(a, red, [s * 0.06, 0.02, 0.1], [0.03, 0.03, 0.09]);
+      const tail = new THREE.Group(); tail.position.set(0, -0.22, 0.32); a.add(tail);
+      blob(tail, blue, [0, -0.3, 0.07], [0.06, 0.34, 0.025], { rot: [0.2, 0, 0] });
+      blob(tail, dark, [0, -0.58, 0.12], [0.06, 0.04, 0.026], { outline: false, rot: [0.2, 0, 0] });
+      blob(tail, '#ffffff', [0, -0.64, 0.135], [0.06, 0.05, 0.026], { rot: [0.2, 0, 0] });
+      const wings = [];
+      for (const s of [-1, 1]) {
+        const w = new THREE.Group(); w.position.set(s * 0.17, 0.02, 0.44); a.add(w);
+        blob(w, blue, [s * 0.05, -0.08, 0], [0.06, 0.22, 0.12], { rot: [0.3, 0, 0] });
+        blob(w, '#ffffff', [s * 0.07, -0.24, -0.04], [0.04, 0.05, 0.05], { outline: false });
+        wings.push(w);
+      }
+      const head = new THREE.Group(); head.position.set(0, 0.22, 0.58); a.add(head);
+      blob(head, dark, [0, 0, 0], [0.16, 0.16, 0.16]);
+      blob(head, red, [0, 0.18, -0.03], [0.035, 0.11, 0.035], { geo: CONE });
+      face(head, 0.12, 0.03, 0.075, 0.035, { ring: true, blush: false });
+      return { head, tail, wings };
+    },
+  },
+};
+const ROSTER = ['bear', 'cat', 'magpie', 'macaque', 'pangolin', 'magpie', 'cat', 'bear'];
+const critterSize = () => nominal * 0.26;  // about 12 cm on a 0.45 m cube
+
+// Where an animal can stand on a model: tops (rays from above) and cave floors (rays from points
+// inside voids, found by counting crossings). Stored in holder-local coordinates.
+const spotQueue = [];
+function findSpots(m) {
+  const temp = [];
+  m.raw.traverse((o) => {
+    if (!o.isMesh) return;
+    const t = new THREE.Mesh(o.geometry, o.material);
+    t.scale.setScalar(m.raw.scale.x);
+    t.updateMatrixWorld(true);
+    temp.push(t);
+  });
+  const spots = [];
+  if (!temp.length || m.box.isEmpty()) return spots;
+  const ray = new THREE.Raycaster();
+  const down = new THREE.Vector3(0, 0, -1), up = new THREE.Vector3(0, 0, 1);
+  const size = m.box.getSize(new THREE.Vector3()), headroom = critterSize() * 1.15;
+  const rand = (lo, hi) => lo + Math.random() * (hi - lo);
+  const pick = (z) => new THREE.Vector3(rand(m.box.min.x, m.box.max.x), rand(m.box.min.y, m.box.max.y), z);
+  const firstFloor = (from) => {
+    ray.set(from, down);
+    const hit = ray.intersectObjects(temp, false)[0];
+    return hit && hit.face && Math.abs(hit.face.normal.z) > 0.7 ? hit.point : null;
+  };
+  const insideSolid = (p) => {
+    ray.set(p, new THREE.Vector3(0.577, 0.613, 0.539).normalize());
+    let n = 0, last = -1;
+    for (const h of ray.intersectObjects(temp, false)) { if (h.distance - last > 1e-6 * size.x) n++; last = h.distance; }
+    return n % 2 === 1;
+  };
+  const add = (pt, cave) => {
+    const local = pt.clone().sub(m.center);
+    local.z += critterSize() * 0.02;
+    if (!spots.some((s) => s.p.distanceTo(local) < critterSize() * 0.6)) spots.push({ p: local, cave });
+  };
+  for (let i = 0; i < 40; i++) { const f = firstFloor(pick(m.box.max.z + size.z * 0.05)); if (f) add(f, false); }
+  for (let i = 0; i < 70 && spots.length < 40; i++) {
+    const p = pick(rand(m.box.min.z, m.box.max.z));
+    if (insideSolid(p)) continue;
+    const f = firstFloor(p);
+    if (!f || f.z > m.box.max.z - size.z * 0.02) continue;    // that's just the top again
+    ray.set(f.clone().add(new THREE.Vector3(0, 0, critterSize() * 0.01)), up);
+    const ceiling = ray.intersectObjects(temp, false)[0];
+    if (ceiling && ceiling.distance < headroom) continue;     // too low to stand in
+    add(f, true);
+  }
+  return spots;
+}
+// True if, in the current view, another cube sits on top of this spot (e.g. the top of a bottom
+// cube in Combined): an animal there would be inside the structure.
+const coverBox = new THREE.Box3(), coverPt = new THREE.Vector3();
+function covered(s) {
+  spotWorld(s, coverPt).z += critterSize() * 0.5;
+  for (const b of Object.values(blocks)) {
+    if (b.holder === s.holder || !b.holder.visible || b.holder.userData.scale !== 1 || !b.box || b.box.isEmpty()) continue;
+    const k = b.holder.scale.x;
+    coverBox.min.copy(b.box.min).sub(b.center).multiplyScalar(k).add(b.holder.position);
+    coverBox.max.copy(b.box.max).sub(b.center).multiplyScalar(k).add(b.holder.position);
+    if (coverBox.containsPoint(coverPt)) return true;
+  }
+  return false;
+}
+// Spots across all cubes currently shown (holder at full size), not covered by another cube.
+function allSpots(flyer) {
+  const out = [];
+  for (const [id, b] of Object.entries(blocks)) {
+    if (!b.holder.visible || b.holder.userData.scale !== 1) continue;
+    const cached = modelSpots.get(b.raw);
+    if (!cached) { if (!spotQueue.includes(b.raw)) spotQueue.push(b.raw); continue; }
+    for (const s of cached) if (!(flyer && s.cave)) out.push({ id, holder: b.holder, raw: b.raw, p: s.p, cave: s.cave });
+  }
+  return out.filter((s) => !covered(s));
+}
+const modelSpots = new WeakMap();   // model (raw group) -> spots
+function processSpotQueue() {
+  const raw = spotQueue.shift();
+  if (!raw) return;
+  const b = Object.values(blocks).find((x) => x.raw === raw);
+  if (b) modelSpots.set(raw, findSpots({ raw, box: b.box, center: b.center }));
+}
+
+const tmpA = new THREE.Vector3(), tmpB = new THREE.Vector3();
+const spotWorld = (s, out) => s.holder.localToWorld(out.copy(s.p));
+const spotAlive = (s) => s && blocks[s.id] && blocks[s.id].raw === s.raw && blocks[s.id].holder.visible;
+const holderScale = (s) => (s && blocks[s.id] ? s.holder.scale.x : 0);
+
+class Critter {
+  constructor(kind) {
+    this.kind = kind;
+    this.spec = SPECIES[kind];
+    this.root = new THREE.Group();
+    this.body = new THREE.Group();
+    this.root.add(this.body);
+    this.parts = this.spec.build(this.body);
+    this.body.traverse((o) => { if (o.isMesh && o.material !== OUTLINE) o.userData.critter = this; });
+    critterLayer.add(this.root);
+    const el = document.createElement('div');
+    el.className = 'emote';
+    el.appendChild(document.createElement('span'));
+    this.bubble = new CSS2DObject(el);
+    this.bubble.center.set(0.5, 1);
+    scene.add(this.bubble);
+    this.at = null;
+    this.move = null;
+    this.wait = Math.random() * 2;
+    this.phase = Math.random() * 10;
+    this.land = 0;
+    this.sayUntil = 0;
+    this.root.visible = false;
+  }
+  say(text, seconds = 1.8) {
+    this.bubble.element.firstChild.textContent = text;
+    this.sayUntil = performance.now() + seconds * 1000;
+  }
+  choose() {
+    const spots = allSpots(this.spec.flyer);
+    if (!spots.length) return null;
+    const here = this.at && spotAlive(this.at) ? spotWorld(this.at, tmpA).clone() : null;
+    const taken = critters.filter((c) => c !== this).map((c) => c.move ? c.move.to : c.at).filter(Boolean);
+    const free = spots.filter((s) => !taken.some((t) => t.raw === s.raw && t.p.distanceTo(s.p) < critterSize() * 0.8));
+    const pool = free.length ? free : spots;
+    if (!here || this.spec.flyer || Math.random() < 0.15) return pool[Math.floor(Math.random() * pool.length)];
+    // walkers mostly hop somewhere close by
+    let best = null, bestD = Infinity;
+    for (let i = 0; i < 6; i++) {
+      const s = pool[Math.floor(Math.random() * pool.length)];
+      const d = spotWorld(s, tmpB).distanceTo(here);
+      if (d > critterSize() * 0.3 && d < bestD) { best = s; bestD = d; }
+    }
+    return best || pool[0];
+  }
+  go(to, { height = null, dur = null, from = this.at } = {}) {
+    const a = from && spotAlive(from) ? spotWorld(from, tmpA).clone() : spotWorld(to, tmpB).clone().add(new THREE.Vector3(0, 0, critterSize() * 4));
+    const b = spotWorld(to, tmpB).clone();
+    const dist = a.distanceTo(b), size = critterSize();
+    const flyer = this.spec.flyer;
+    this.move = {
+      from: from && spotAlive(from) ? from : null, start: a, to, t: 0,
+      dur: dur ?? (flyer ? 0.7 + 0.3 * Math.sqrt(dist / size) : 0.35 + 0.3 * Math.sqrt(dist / size)),
+      height: height ?? (flyer ? dist * 0.45 + size * 2.5 : dist * 0.3 + size * 0.6),
+    };
+    if (dist > size * 0.05) this.root.rotation.z = Math.atan2(b.y - a.y, b.x - a.x) - Math.PI / 2;
+  }
+  poke() {
+    if (!this.at) return;
+    this.say(`♥ ${this.spec.name}`, 2.8);
+    this.go(this.at, { height: critterSize() * 1.6, dur: 0.6 });
+  }
+  update(dt, t) {
+    const size = critterSize();
+    if (!this.move && (!spotAlive(this.at) || (this.at.cave === false && covered(this.at)))) {   // the cube changed, went away or got covered: move
+      const s = this.choose();
+      if (!s) { this.root.visible = false; this.bubble.element.classList.remove('show'); return; }
+      this.go(s);
+    }
+    let scale = holderScale(this.at);
+    if (this.move) {
+      const mv = this.move;
+      mv.t = Math.min(1, mv.t + dt / mv.dur);
+      const e = mv.t < 0.5 ? 2 * mv.t * mv.t : 1 - Math.pow(-2 * mv.t + 2, 2) / 2;
+      const a = mv.from && spotAlive(mv.from) ? spotWorld(mv.from, tmpA) : tmpA.copy(mv.start);
+      const b = spotWorld(mv.to, tmpB);
+      this.root.position.lerpVectors(a, b, e);
+      this.root.position.z += Math.sin(Math.PI * e) * mv.height;
+      scale = THREE.MathUtils.lerp(mv.from ? holderScale(mv.from) : holderScale(mv.to), holderScale(mv.to), e);
+      if (this.parts.wings) this.parts.wings.forEach((w, i) => { w.rotation.y = (i ? -1 : 1) * Math.sin(t * 28) * 0.9; });
+      this.body.scale.set(1, 1, this.spec.flyer ? 1 : 1 + 0.12 * Math.sin(Math.PI * e));
+      if (mv.t >= 1) {
+        this.at = mv.to;
+        this.move = null;
+        this.land = this.spec.flyer ? 0 : 0.25;
+        this.wait = 1.5 + Math.random() * (this.spec.flyer ? 6 : 4);
+        if (this.parts.wings) this.parts.wings.forEach((w) => { w.rotation.y = 0; });
+        this.lookAtViewer = Math.random() < 0.55;   // turn round to say hello
+        if (Math.random() < 0.18) this.say(this.spec.says[Math.floor(Math.random() * this.spec.says.length)]);
+      }
+    } else {
+      spotWorld(this.at, this.root.position);
+      this.wait -= dt;
+      this.land = Math.max(0, this.land - dt);
+      const squash = this.land > 0 ? Math.sin((this.land / 0.25) * Math.PI) * 0.18 : 0;
+      const breathe = 0.03 * Math.sin(t * 3 + this.phase);
+      this.body.scale.set(1 + squash, 1 + squash, 1 - squash + breathe);
+      if (this.parts.head) this.parts.head.rotation.z = 0.45 * Math.sin(t * 0.6 + this.phase) * Math.max(0, Math.sin(t * 0.23 + this.phase));
+      if (this.parts.tail) this.parts.tail.rotation.x = 0.2 * Math.sin(t * 2.2 + this.phase);
+      if (this.lookAtViewer) {
+        const want = Math.atan2(camera.position.y - this.root.position.y, camera.position.x - this.root.position.x) - Math.PI / 2;
+        const diff = Math.atan2(Math.sin(want - this.root.rotation.z), Math.cos(want - this.root.rotation.z));
+        this.root.rotation.z += diff * Math.min(1, dt * 2.5);
+      }
+      if (this.wait <= 0) {
+        const s = this.choose();
+        if (s) this.go(s); else this.wait = 1;
+      }
+    }
+    this.root.visible = scale > 0.02;
+    this.root.scale.setScalar(size * Math.max(scale, 0.001));
+    this.bubble.position.copy(this.root.position).add(tmpA.set(0, 0, size * scale * 1.25));
+    this.bubble.element.classList.toggle('show', this.root.visible && performance.now() < this.sayUntil);
+  }
+}
+const clockStart = performance.now();
+function updateCritters(dt) {
+  processSpotQueue();
+  for (const b of Object.values(blocks)) b.holder.updateMatrixWorld();
+  const t = (performance.now() - clockStart) / 1000;
+  for (const c of critters) c.update(dt, t);
+}
+function setAnimals(on) {
+  animalsOn = on;
+  btnAnimals.setAttribute('aria-pressed', on);
+  if (on && !critters.length) for (const kind of ROSTER) critters.push(new Critter(kind));
+  critterLayer.visible = on;
+  for (const c of critters) {
+    c.bubble.element.classList.remove('show');
+    if (on && !c.move) { c.at = null; c.wait = Math.random() * 1.5; }   // drop in again from above
+  }
+}
+btnAnimals.onclick = () => setAnimals(!animalsOn);
+setAnimals(animalsOn);
+
 // ---------- animation
 function snapCamera() {
   if (!camGoal) return;
@@ -1393,6 +1778,7 @@ const timer = new THREE.Clock();
 renderer.setAnimationLoop(() => {
   const dt = Math.min(timer.getDelta(), 0.1);
   const a = 1 - Math.exp(-dt * 7);
+  if (animalsOn) updateCritters(dt);
   if (sunOn && sunPlaying) {   // one hour of daylight per second
     sunMinutes += dt * 60;
     if (sunMinutes >= SUN_PLAY[1]) sunMinutes = SUN_PLAY[0];

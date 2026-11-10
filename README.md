@@ -65,7 +65,7 @@ What gets published: everything visible. Hidden objects and hidden layers are sk
 
 ## On the screen
 
-Open your Vercel URL fullscreen (F11). Drag to orbit (all the way round, so you can look at the bottom too), scroll to zoom.
+Open your Vercel URL and press **P** (or the Fullscreen button) for fullscreen with only the model: every control disappears and the model fills the screen. The keys keep working, so you can switch views while presenting; moving the mouse shows an Exit button, and Esc brings the controls back. Drag to orbit (all the way round, so you can look at the bottom too), scroll to zoom.
 
 | Key | Does |
 |---|---|
@@ -81,6 +81,8 @@ Open your Vercel URL fullscreen (F11). Drag to orbit (all the way round, so you 
 | **Esc** | Close the cube's card |
 | **L** | Group labels |
 | **F** | Fit the view |
+| **P** | Fullscreen with only the model (Esc to come back) |
+| **H** | Show or hide the history bar |
 | **U** | Update: load the newest models now (see below) |
 
 **Click a cube** for its card: size, volume, void (share of its bounding box left empty), estimated weight in concrete (2.4 t/m³), surface area, which cubes it touches and over how much area, triangle count and file size, plus buttons for One by one and Interfaces. The card also **downloads the published .3dm files**: this version, all versions of the group (zip), or every group as shown (zip; when you're looking back in the history, the versions of that moment). These are the files the Publish button sent, so meshes in metres, not the students' working files. Volume needs a closed model; otherwise the card says so. Clicking empty space or **Esc** closes it.
@@ -93,7 +95,7 @@ Clicking a group chip at the bottom left opens that group in One by one with its
 
 The address keeps the current view, so you can bookmark one: `…/#matrix`, `…/#exploded`, `…/#single-3`, `…/#interfaces-3`.
 
-**History.** The bar above the group chips has a tick for every publish, in the group's colour. Drag the slider, use ‹ › or **[** **]**, or press ▶ to replay the session one update per second. Everything follows the point in time you pick, the interface drawings included; the status line says you're looking back. **● Live** returns to the newest version of every group. The server keeps the last 100 versions per group.
+**History.** The bar above the group chips has a tick for every publish, in the group's colour. Drag the slider, use ‹ › or **[** **]**, or press ▶ to replay the session one update per second. Everything follows the point in time you pick, the interface drawings included; the status line says you're looking back. **● Live** returns to the newest version of every group. The × at the end of the bar (or **H**) hides it; the browser remembers that. The server keeps the last 100 versions per group.
 
 **Sun.** Date and time sliders set the sun for Tainan (latitude 22.99°, longitude 120.21°, UTC+8); ▶ plays the day from 5:00 to 19:30. The model's +Y is taken as north. The orange arc is the sun's path that day, the grey ring the horizon.
 

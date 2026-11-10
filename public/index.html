@@ -136,6 +136,18 @@
   .history .live { border: 1px solid var(--rule); background: #fff; border-radius: 5px; padding: 5px 10px; cursor: pointer;
     font-weight: 650; white-space: nowrap; }
   .history .live[aria-pressed="true"] { background: #b3261e; border-color: #b3261e; color: #fff; }
+  .history .hide { border: 0; background: none; color: var(--muted); font-size: 20px; line-height: 1; padding: 0 2px 2px; cursor: pointer; }
+  .history .hide:hover { color: var(--ink); }
+
+  /* fullscreen presenting: only the model */
+  body.presenting .top, body.presenting .bottom, body.presenting .sheet { display: none !important; }
+  body.presenting.idle, body.presenting.idle canvas { cursor: none; }
+  .exit-present { position: fixed; top: 16px; right: 16px; z-index: 5; display: none; padding: 7px 12px;
+    border: 1px solid var(--rule); border-radius: 5px; background: var(--paper); color: var(--ink);
+    font: 600 14px 'Archivo', system-ui, sans-serif; cursor: pointer; opacity: 0; transition: opacity .3s; }
+  .exit-present kbd { font: inherit; color: var(--muted); margin-left: 6px; }
+  body.presenting .exit-present { display: block; }
+  body.presenting .exit-present.show { opacity: 1; }
 
   /* section planes */
   .sectionpanel { display: grid; grid-template-columns: auto minmax(120px, 200px) auto; gap: 6px 10px; align-items: center; }
@@ -287,6 +299,7 @@
     <button class="step" id="hist-next" aria-label="Next update" title="Next update (])">›</button>
     <div class="when" id="hist-when" aria-live="polite"></div>
     <button class="live" id="hist-live" aria-pressed="true" title="Show the newest version of every group and follow new updates">● Live</button>
+    <button class="hide" id="hist-hide" type="button" aria-label="Hide the history bar" title="Hide the history bar (H)">×</button>
   </div>
   <div class="left">
     <nav class="groups" id="groups" aria-label="Groups: click one to view it on its own"></nav>
@@ -306,11 +319,14 @@
     <button id="btn-rock" aria-pressed="false" title="Show the cubes in stone (T)"><kbd>T</kbd> Rock</button>
     <button id="btn-section" aria-pressed="false" title="Cut the model with planes along X, Y and Z (X)"><kbd>X</kbd> Section</button>
     <button id="btn-labels" aria-pressed="true" title="Show group labels (L)"><kbd>L</kbd> Labels</button>
+    <button id="btn-history" aria-pressed="true" title="Show or hide the history bar (H)"><kbd>H</kbd> History</button>
     <button id="btn-fit" title="Frame the view (F)"><kbd>F</kbd> Fit</button>
+    <button id="btn-present" title="Fullscreen with only the model; Esc to come back (P)"><kbd>P</kbd> Fullscreen</button>
   </div>
 </div>
 
 <section class="sheet" id="sheet" hidden></section>
+<button class="exit-present" id="exit-present" type="button">Exit fullscreen<kbd>Esc</kbd></button>
 
 <script type="module">
 import * as THREE from 'three';
@@ -803,7 +819,7 @@ function frame(box = currentBounds, dir = camGoal?.dir || camera.position.clone(
   if (right.lengthSq() < 1e-8) right.set(1, 0, 0);   // looking straight up or down
   right.normalize();
   const up = new THREE.Vector3().crossVectors(right, dir.clone().negate());
-  const margin = camera.aspect < 1 ? 0.7 : 0.6;
+  const margin = presenting ? 0.85 : camera.aspect < 1 ? 0.7 : 0.6;   // fill more of the screen without controls
   const ty = Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) * margin;
   const tx = ty * camera.aspect;
   let dist = 0;
@@ -1091,7 +1107,9 @@ addEventListener('keydown', (e) => {
   else if (k === 'a') setAnimals(!animalsOn);
   else if (k === 't') setRock(!rockOn);
   else if (k === 'x') setSection(!sectionOn);
-  else if (k === 'escape') hideCard();
+  else if (k === 'escape') { if (presenting) setPresenting(false); else hideCard(); }
+  else if (k === 'h') setHistoryShown(!historyShown);
+  else if (k === 'p') setPresenting(!presenting);
   else if (k === 'r') setRotate(!rotateWanted);
   else if (k === 'c') nextMode();
   else if (k === 'l') btnLabels.click();
@@ -1120,7 +1138,7 @@ function historyIndex(updates) {
 }
 function renderHistory(force = false) {
   const updates = allUpdates();
-  histEl.hidden = updates.length < 2;
+  histEl.hidden = !historyShown || updates.length < 2;
   if (histEl.hidden) return;
   const i = historyIndex(updates);
   histRange.max = updates.length - 1;
@@ -2004,6 +2022,46 @@ cuts.forEach((c, a) => {
   document.getElementById(`cut-${a}-flip`).onclick = () => { c.flip = !c.flip; c.on = true; renderSection(); updateCuts(); };
 });
 btnSection.onclick = () => setSection(!sectionOn);
+
+// ---------- history bar on/off (H), remembered in this browser
+const btnHistory = document.getElementById('btn-history');
+let historyShown = (() => { try { return localStorage.getItem('tainanrocks.history') !== 'hidden'; } catch { return true; } })();
+function setHistoryShown(on) {
+  historyShown = on;
+  try { localStorage.setItem('tainanrocks.history', on ? 'shown' : 'hidden'); } catch { /* private mode: just this visit */ }
+  btnHistory.setAttribute('aria-pressed', on);
+  renderHistory();
+  renderInterfaces();   // the interfaces sheet sits above the bar
+}
+btnHistory.onclick = () => setHistoryShown(!historyShown);
+document.getElementById('hist-hide').onclick = () => setHistoryShown(false);
+btnHistory.setAttribute('aria-pressed', historyShown);
+
+// ---------- fullscreen (P): only the model, no controls
+const exitBtn = document.getElementById('exit-present');
+let presenting = false;
+let idleTimer;
+function setPresenting(on) {
+  if (on === presenting) return;
+  presenting = on;
+  document.body.classList.toggle('presenting', on);
+  if (on && !document.fullscreenElement) document.documentElement.requestFullscreen?.().catch(() => {});
+  if (!on && document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
+  wakeUp();
+  setTimeout(() => { resize(); frame(layout()); renderInterfaces(); }, 150);   // after the browser has resized
+}
+// The exit button and the cursor show while the mouse moves, then fade away.
+function wakeUp() {
+  clearTimeout(idleTimer);
+  exitBtn.classList.add('show');
+  document.body.classList.remove('idle');
+  if (presenting) idleTimer = setTimeout(() => { exitBtn.classList.remove('show'); document.body.classList.add('idle'); }, 2500);
+}
+addEventListener('pointermove', () => { if (presenting) wakeUp(); });
+addEventListener('pointerdown', () => { if (presenting) wakeUp(); });
+document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && presenting) setPresenting(false); });
+exitBtn.onclick = () => setPresenting(false);
+document.getElementById('btn-present').onclick = () => setPresenting(true);
 
 // ---------- statistics card: click a cube (or its chip) to see what it's made of
 const cardEl = document.getElementById('card');

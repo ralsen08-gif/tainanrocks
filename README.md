@@ -1,10 +1,11 @@
 # Workshop Live
 
-Each group designs one piece (a cube) in Rhino and presses **Publish**. The class screen shows the pieces the way the reference Rhino file lays them out, and updates within about 10 seconds:
+Each group designs one piece (a cube) in Rhino and presses **Publish**. The class screen updates within about 10 seconds and has four views; the pieces glide between them:
 
 - **Combined**: all pieces together at their real Rhino coordinates (e.g. eight cubes forming one 2×2×2 cube)
-- **Combined exploded**: the same, with every piece pushed away from the centre so you can see each one
-- **Group 1 … Group 8**: a row of plates, each showing one group's piece on its own, with when it was last published
+- **Exploded**: the same, with every piece pushed away from the centre; a slider sets the separation
+- **One by one**: one group's piece on its own; step through the groups with ‹ › or the arrow keys
+- **Matrix**: every group's piece side by side in a grid, with empty spots for groups that haven't published
 
 ```
 Rhino (each group)                 Vercel                          Class screen (browser)
@@ -17,7 +18,7 @@ Rhino (optional)    ◀───────────  /api/state  (WorkshopS
 
 | Path | What it is |
 |---|---|
-| `public/index.html` | The class-screen viewer: Combined, Combined exploded and one plate per group, all in one 3D scene |
+| `public/index.html` | The class-screen viewer: Combined, Exploded, One by one and Matrix views, plus a status chip per group |
 | `api/publish.js` | Receives uploads from Rhino (and lets you remove a group or clear everything) |
 | `api/state.js` | Tells viewers which groups have published and where their files are |
 | `lib/manifest.js` | Shared storage logic |
@@ -31,7 +32,7 @@ Rhino (optional)    ◀───────────  /api/state  (WorkshopS
 3. **Add Blob storage.** In the project: Storage → Create → Blob → set access to **Public** → connect it to the project (all environments).
 4. **Set the passcode.** Settings → Environment Variables → add `WORKSHOP_KEY` with any passcode you like (e.g. `blocks-2026`).
 5. **Redeploy** (Deployments → ⋯ → Redeploy) so the new storage and passcode are picked up.
-6. **Open your URL.** You should see the empty plates (Combined, Combined exploded, Group 1–8) and "No groups yet."
+6. **Open your URL.** You should see the view switcher, eight empty group chips and "No groups yet."
 7. **Edit the Rhino scripts.** At the top of `rhino/WorkshopPublish.py` and `rhino/WorkshopSync.py`, set:
    ```python
    SERVER_URL = "https://your-project.vercel.app"
@@ -60,9 +61,22 @@ What gets published: everything visible. Hidden objects and hidden layers are sk
 
 ## On the screen
 
-Open your Vercel URL fullscreen (F11). Drag to orbit, scroll to zoom. Keys: **R** slowly spins each model on its plate, **C** colours (model colours / group colours / white model), **L** plate labels, **F** fit everything. A plate is tinted for 90 seconds after its group publishes.
+Open your Vercel URL fullscreen (F11). Drag to orbit, scroll to zoom.
 
-URL options: `?title=Studio%20Rotterdam` sets the heading, `?poll=5` the refresh interval in seconds, `?groups=8` the number of group plates, `?explode=1` how far the exploded view pushes pieces apart (1 = each piece moves its own distance from the centre again; 0.5 = half that).
+| Key | Does |
+|---|---|
+| **1** **2** **3** **4** | Combined / Exploded / One by one / Matrix |
+| **←** **→** | Previous / next group (opens One by one) |
+| **R** | Slow orbit on/off (dragging pauses it for 20 s; the matrix never orbits) |
+| **C** | Colours: model colours / group colours / white model |
+| **L** | Group labels |
+| **F** | Fit the view |
+
+Click a cube, or a group chip at the bottom left, to open that group in One by one. Each chip shows when the group last published; a dot marks the ones published in the last 90 seconds.
+
+The address keeps the current view, so you can bookmark one: `…/#matrix`, `…/#exploded`, `…/#single-3`.
+
+URL options: `?title=Studio%20Rotterdam` sets the heading, `?poll=5` the refresh interval in seconds, `?groups=8` the number of groups, `?explode=1` the starting separation (1 = each piece moves its own distance from the centre again; 0–3), `?view=matrix` the starting view.
 
 ## Optional: blocks inside your own Rhino
 

@@ -75,6 +75,31 @@
     animation: ring 1.6s ease-out 2 forwards; }
   @keyframes ring { 0% { transform: scale(1.18); opacity: 0; } 35% { opacity: 1; } 100% { transform: scale(1); opacity: 0; } }
 
+  .left { display: flex; flex-direction: column; gap: 12px; pointer-events: none; }
+  .credits { display: flex; align-items: center; gap: 12px; color: var(--ink); pointer-events: auto; }
+  .credits img { display: block; height: 28px; width: auto; }
+  .credits .wordmark { font-weight: 780; font-variation-settings: 'wdth' 125; font-size: 15px; letter-spacing: .02em; }
+  .credits .x { color: var(--muted); }
+
+  /* statistics card for a clicked cube */
+  .card { display: block; width: min(340px, 100%); padding: 12px 14px 12px; }
+  .card[hidden] { display: none; }
+  .card header { display: flex; align-items: center; gap: 9px; }
+  .card h2 { margin: 0; flex: 1; font-size: 18px; font-weight: 780; font-variation-settings: 'wdth' 125; }
+  .card .chip { width: 14px; height: 14px; border-radius: 3px; background: var(--c); box-shadow: 0 0 0 1px rgba(30,35,42,.2); }
+  .card .close { border: 0; background: none; font-size: 22px; line-height: 1; padding: 0 4px; cursor: pointer; color: var(--muted); }
+  .card .sub { margin: 3px 0 9px; color: var(--muted); font-size: 13px; }
+  .card dl { display: grid; grid-template-columns: auto 1fr; gap: 3px 14px; margin: 0; font-size: 14px; line-height: 1.35; }
+  .card dt { color: var(--muted); }
+  .card dd { margin: 0; font-variant-numeric: tabular-nums; }
+  .card dd small { color: var(--muted); }
+  .card .row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; font-size: 13px; }
+  .card .row span { color: var(--muted); margin-right: 2px; }
+  .card .row button { border: 1px solid var(--rule); background: #fff; border-radius: 4px; padding: 4px 9px; cursor: pointer; font-size: 13px; }
+  .card .row button:hover { background: #e8ebec; }
+  .card .row button:disabled { opacity: .6; cursor: progress; }
+  .card .empty { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
+
   .keys { font-size: 13px; color: var(--muted); text-align: right; line-height: 1.7; pointer-events: auto; }
   .keys button { color: var(--ink); background: var(--paper); border: 1px solid var(--rule);
     border-radius: 4px; padding: 3px 9px; margin-left: 6px; cursor: pointer; }
@@ -170,12 +195,23 @@
   }
   @media (prefers-reduced-motion: reduce) { .cell.pulse::after, .label.pulse span { animation: none; } }
 </style>
+<script>
+  // Logos live in public/logos/ (mvrdv.svg / ncku.svg, or .png). Until they're there, show the names.
+  function logoMissing(img) {
+    if (!img.dataset.triedPng) { img.dataset.triedPng = '1'; img.src = img.src.replace(/\.svg$/, '.png'); return; }
+    const t = document.createElement('span');
+    t.className = 'wordmark';
+    t.textContent = img.dataset.name;
+    img.replaceWith(t);
+  }
+</script>
 <script type="importmap">
 {
   "imports": {
     "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
     "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/",
-    "rhino3dm": "https://cdn.jsdelivr.net/npm/rhino3dm@8.4.0/rhino3dm.module.min.js"
+    "rhino3dm": "https://cdn.jsdelivr.net/npm/rhino3dm@8.4.0/rhino3dm.module.min.js",
+    "fflate": "https://cdn.jsdelivr.net/npm/fflate@0.8.2/esm/browser.js"
   }
 }
 </script>
@@ -206,6 +242,7 @@
       <div class="who" aria-live="polite"><b id="single-name">Group 1</b><small id="single-time"></small></div>
       <button class="step" id="next" aria-label="Next group" title="Next group (→)">›</button>
     </div>
+    <section class="context card" id="card" hidden aria-live="polite"></section>
     <div class="context sunpanel" id="ctx-sun" hidden>
       <label for="sun-day">Date</label>
       <input id="sun-day" type="range" min="1" max="365" step="1">
@@ -231,14 +268,22 @@
     <div class="when" id="hist-when" aria-live="polite"></div>
     <button class="live" id="hist-live" aria-pressed="true" title="Show the newest version of every group and follow new updates">● Live</button>
   </div>
-  <nav class="groups" id="groups" aria-label="Groups: click one to view it on its own"></nav>
+  <div class="left">
+    <nav class="groups" id="groups" aria-label="Groups: click one to view it on its own"></nav>
+    <div class="credits" aria-label="Workshop by MVRDV and National Cheng Kung University, Tainan">
+      <img src="logos/mvrdv.svg" alt="MVRDV" data-name="MVRDV" onerror="logoMissing(this)">
+      <span class="x" aria-hidden="true">×</span>
+      <img src="logos/ncku.svg" alt="National Cheng Kung University, Tainan" data-name="NCKU Tainan" onerror="logoMissing(this)">
+    </div>
+  </div>
   <div class="keys">
-    <span class="hint">Drag to orbit, scroll to zoom, click a cube to open it</span><br>
+    <span class="hint">Drag to orbit, scroll to zoom, click a cube for its details</span><br>
     <button id="btn-update" title="Load the newest models now, without waiting for the cache (U)"><kbd>U</kbd> <span>Update</span></button>
     <button id="btn-rotate" aria-pressed="true" title="Slowly orbit the model (R)"><kbd>R</kbd> Rotate</button>
     <button id="btn-sun" aria-pressed="false" title="Sunlight for a date and time (S)"><kbd>S</kbd> Sun</button>
     <button id="btn-animals" aria-pressed="false" title="Taiwanese animals living on the cubes (A)"><kbd>A</kbd> Animals</button>
-    <button id="btn-color" title="Switch colors: model, groups, white (C)"><kbd>C</kbd> <span id="color-name">Model colors</span></button>
+    <button id="btn-color" title="Switch colors: groups, model, white (C)"><kbd>C</kbd> <span id="color-name">Group colors</span></button>
+    <button id="btn-rock" aria-pressed="false" title="Show the cubes in stone (T)"><kbd>T</kbd> Rock</button>
     <button id="btn-labels" aria-pressed="true" title="Show group labels (L)"><kbd>L</kbd> Labels</button>
     <button id="btn-fit" title="Frame the view (F)"><kbd>F</kbd> Fit</button>
   </div>
@@ -269,8 +314,10 @@ const PLACE = params.get('place') || (params.has('lat') ? '' : 'Tainan');
 document.getElementById('title').textContent = TITLE;
 document.title = TITLE;
 
-// Groups 1–8 use the colours of the reference Rhino file; further groups get distinct inks.
-const GROUP_COLORS = ['#b4b4b4', '#d8d800', '#1fd41f', '#0c3a0c', '#e00000', '#d93636', '#00dede', '#a43ee0'];
+// Group colours: one warm-to-cool family at similar strength (vermilion, marigold, leaf, jade, blue,
+// violet, rose, earth), checked to be clearly apart (CIEDE2000 ≥ 21 between any two). Every chip and
+// label also shows the group's number. Further groups get distinct inks.
+const GROUP_COLORS = ['#e05a3a', '#f2b134', '#7fb04b', '#2a9d8f', '#3a78c2', '#6a4c9c', '#d9779f', '#8d6e4e'];
 const EXTRA_COLORS = ['#ff48b0', '#0078bf', '#ff6c2f', '#765ba7', '#00838a', '#ffb511', '#62a8e5', '#bb8b41'];
 const WHITE = '#f6f7f5';
 
@@ -353,13 +400,20 @@ function resize() {
 resize();
 
 // ---------- colour modes
-const MODES = ['model', 'groups', 'white'];
+const MODES = ['groups', 'model', 'white'];
 const MODE_NAMES = { model: 'Model colors', groups: 'Group colors', white: 'White model' };
-let mode = 'model';
+let mode = MODES.includes(params.get('colors')) ? params.get('colors') : 'groups';
+let rockOn = params.get('rock') === '1';
+const STONE = new THREE.Color('#b8ad9c');
 function colorFor(id, modelColor) {
   if (mode === 'white') return WHITE;
   if (mode === 'model' && modelColor) return modelColor;
   return groupColor(id);
+}
+// What the model's surfaces get: the colour above, or with Rock on, stone tinted with it.
+function surfaceColor(id, modelColor) {
+  const c = new THREE.Color(colorFor(id, modelColor));
+  return rockOn ? c.lerp(STONE, mode === 'white' ? 0.85 : 0.55) : c;
 }
 // Colour of a group's chip and label: its model's colour, or the group colour.
 function chipColor(slot) {
@@ -374,6 +428,7 @@ function recolor() {
   renderGroups();
   renderHistory(true);
   renderInterfaces();
+  renderCard();
 }
 
 // ---------- loading .3dm files
@@ -413,8 +468,9 @@ async function buildGroup(id, url) {
   function addMesh(rmesh, modelColor) {
     const g = jsonLoader.parse(rmesh.toThreejsJSON());
     if (!g.attributes.normal) g.computeVertexNormals();
-    const mat = new THREE.MeshStandardMaterial({ color: colorFor(id, modelColor), roughness: 0.92, metalness: 0,
+    const mat = new THREE.MeshStandardMaterial({ color: surfaceColor(id, modelColor), roughness: 0.92, metalness: 0,
       side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
+    rockify(mat, scale);
     const mesh = new THREE.Mesh(g, mat);
     mesh.castShadow = mesh.receiveShadow = true;
     mesh.userData.modelColor = modelColor;
@@ -489,7 +545,7 @@ function disposeModel(url) {
   }), () => {});
 }
 function paint(id, raw) {
-  raw.traverse((o) => { if (o.isMesh) o.material.color.set(colorFor(id, o.userData.modelColor)); });
+  raw.traverse((o) => { if (o.isMesh) o.material.color.copy(surfaceColor(id, o.userData.modelColor)); });
 }
 
 // Each group on screen hangs its current model in a holder placed at the model's centre, so the
@@ -572,6 +628,7 @@ function refreshScene(refit = false) {
   renderStatus();
   renderHistory();
   renderInterfaces();
+  renderCard();
 }
 
 // ---------- slots: Group 1..N, plus any other published IDs
@@ -762,7 +819,10 @@ let from = null;
 function setView(v, opts = {}) {
   from = from === null ? null : view;
   view = v;
-  if (opts.group) selected = opts.group;
+  if (opts.group) {
+    selected = opts.group;
+    if (cardFor) cardFor = opts.group;   // the open card follows the group being shown
+  }
   for (const t of tabs) t.setAttribute('aria-selected', t.dataset.view === view);
   ctxExploded.hidden = view !== 'exploded';
   ctxSingle.hidden = view !== 'single' && view !== 'interfaces';
@@ -777,6 +837,7 @@ function setView(v, opts = {}) {
   history.replaceState(null, '', `${location.search}#${view}${withGroup ? '-' + encodeURIComponent(selected) : ''}`);
   renderGroups();
   renderInterfaces();
+  renderCard();
 }
 // One by one and Interfaces both show one group; picking a group keeps you in whichever is open.
 const groupView = () => (view === 'interfaces' ? 'interfaces' : 'single');
@@ -826,7 +887,7 @@ function renderGroups() {
     }
     const b = s.id && blocks[s.id];
     el.dataset.key = s.key;
-    el.onclick = () => setView(groupView(), { group: s.key });
+    el.onclick = () => { setView(groupView(), { group: s.key }); showCard(s.key); };
     el.querySelector('b').textContent = s.short;
     el.querySelector('small').textContent = !b ? '' : historyAt === null ? timeAgo(b.publishedAt).replace(' ago', '') : clock(b.publishedAt);
     el.classList.toggle('on', !!b);
@@ -965,9 +1026,12 @@ renderer.domElement.addEventListener('pointerup', (e) => {
   const meshes = [];
   for (const b of Object.values(blocks)) if (b.holder.visible) b.raw.traverse((o) => { if (o.isMesh) meshes.push(o); });
   const hit = raycaster.intersectObjects(meshes, false)[0];
-  if (!hit) return;
+  if (!hit) { hideCard(); return; }   // clicking empty space closes the card
   const slot = slotList.find((s) => s.id === hit.object.userData.blockId);
-  if (slot && !(view === groupView() && slot.key === selected)) setView(groupView(), { group: slot.key });
+  if (!slot) return;
+  selected = slot.key;
+  showCard(slot.key);
+  renderGroups();
 });
 
 // ---------- display controls
@@ -996,6 +1060,8 @@ addEventListener('keydown', (e) => {
   else if (k === ']') stepHistory(1);
   else if (k === 's') setSun(!sunOn);
   else if (k === 'a') setAnimals(!animalsOn);
+  else if (k === 't') setRock(!rockOn);
+  else if (k === 'escape') hideCard();
   else if (k === 'r') setRotate(!rotateWanted);
   else if (k === 'c') nextMode();
   else if (k === 'l') btnLabels.click();
@@ -1065,6 +1131,7 @@ async function goToUpdate(i) {
   } else {
     renderContext();
     renderStatus();
+    renderCard();
   }
 }
 function stepHistory(d) {
@@ -1767,6 +1834,235 @@ function setAnimals(on) {
 btnAnimals.onclick = () => setAnimals(!animalsOn);
 setAnimals(animalsOn);
 
+// ---------- rock (T): a stone texture generated here and projected onto the cubes from three sides
+// (Rhino meshes carry no texture coordinates). It is fixed to each model, so it moves with the cube.
+const ROCK_TILE_M = 0.35;   // one repeat of the pattern, in metres
+const rockUniforms = { rockMap: { value: new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1) }, rockOn: { value: 0 } };
+rockUniforms.rockMap.value.needsUpdate = true;
+function rockify(mat, metresPerUnit) {
+  mat.onBeforeCompile = (shader) => {
+    shader.uniforms.rockMap = rockUniforms.rockMap;
+    shader.uniforms.rockOn = rockUniforms.rockOn;
+    shader.uniforms.rockScale = { value: metresPerUnit / ROCK_TILE_M };
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vRockPos;\nvarying vec3 vRockNormal;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvRockPos = position;\nvRockNormal = normal;');
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', '#include <common>\nuniform sampler2D rockMap;\nuniform float rockOn;\nuniform float rockScale;\nvarying vec3 vRockPos;\nvarying vec3 vRockNormal;')
+      .replace('#include <map_fragment>', `#include <map_fragment>
+        if (rockOn > 0.5) {
+          vec3 w = pow(abs(normalize(vRockNormal)), vec3(6.0));
+          w /= (w.x + w.y + w.z + 1e-5);
+          vec3 p = vRockPos * rockScale;
+          vec3 stone = texture2D(rockMap, p.yz).rgb * w.x + texture2D(rockMap, p.xz + 0.37).rgb * w.y + texture2D(rockMap, p.xy + 0.71).rgb * w.z;
+          diffuseColor.rgb *= stone;
+        }`);
+  };
+  mat.customProgramCacheKey = () => 'rock';
+}
+// Tileable stone: layered noise for the grain, a few darker veins, and speckles.
+function makeRockTexture() {
+  const N = 512;
+  let seed = 20261110;
+  const rand = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
+  const smooth = (t) => t * t * (3 - 2 * t);
+  const layer = (cells) => {
+    const g = Float32Array.from({ length: cells * cells }, rand);
+    const at = (i, j) => g[((j % cells) + cells) % cells * cells + ((i % cells) + cells) % cells];
+    return (x, y) => {
+      const fx = x * cells / N, fy = y * cells / N, x0 = Math.floor(fx), y0 = Math.floor(fy);
+      const tx = smooth(fx - x0), ty = smooth(fy - y0);
+      const top = at(x0, y0) + (at(x0 + 1, y0) - at(x0, y0)) * tx;
+      const bottom = at(x0, y0 + 1) + (at(x0 + 1, y0 + 1) - at(x0, y0 + 1)) * tx;
+      return top + (bottom - top) * ty;
+    };
+  };
+  const grain = [[3, 0.46], [6, 0.27], [12, 0.13], [24, 0.07], [48, 0.04], [96, 0.025], [192, 0.015]].map(([c, a]) => [layer(c), a]);
+  const vein = [layer(3), layer(7)];
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = N;
+  const ctx = canvas.getContext('2d');
+  const img = ctx.createImageData(N, N);
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    let n = 0;
+    for (const [f, a] of grain) n += f(x, y) * a;
+    const ridge = 1 - Math.abs(vein[0](x, y) * 0.7 + vein[1](x, y) * 0.3 - 0.5) * 2;
+    let v = 0.7 + (n - 0.5) * 0.55;
+    v *= 1 - 0.26 * THREE.MathUtils.smoothstep(ridge, 0.945, 0.995);
+    const r = rand();
+    if (r < 0.014) v *= 0.72; else if (r > 0.99) v = Math.min(1, v * 1.18);
+    v = Math.max(0, Math.min(1, v));
+    const i = (y * N + x) * 4;
+    img.data[i] = 255 * v; img.data[i + 1] = 252 * v; img.data[i + 2] = 244 * v; img.data[i + 3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = MAX_ANISO;
+  return tex;
+}
+const MAX_ANISO = renderer.capabilities.getMaxAnisotropy();
+const btnRock = document.getElementById('btn-rock');
+function setRock(on) {
+  rockOn = on;
+  if (on && !rockUniforms.rockMap.value.isCanvasTexture) rockUniforms.rockMap.value = makeRockTexture();
+  rockUniforms.rockOn.value = on ? 1 : 0;
+  btnRock.setAttribute('aria-pressed', on);
+  for (const [id, b] of Object.entries(blocks)) paint(id, b.raw);
+}
+btnRock.onclick = () => setRock(!rockOn);
+
+// ---------- statistics card: click a cube (or its chip) to see what it's made of
+const cardEl = document.getElementById('card');
+const STONE_DENSITY = 2300;   // kg/m³, sandstone
+let cardFor = null;           // slot key
+const statsCache = new WeakMap();
+// Volume (closed meshes, by summing signed tetrahedra), surface area and triangle count, in metres.
+function meshStats(raw) {
+  if (statsCache.has(raw)) return statsCache.get(raw);
+  const s = raw.scale.x;
+  let vol = 0, area = 0, tris = 0;
+  const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), ab = new THREE.Vector3(), ac = new THREE.Vector3();
+  raw.traverse((o) => {
+    if (!o.isMesh) return;
+    const pos = o.geometry.attributes.position, index = o.geometry.index;
+    const n = index ? index.count : pos.count;
+    const at = (i) => (index ? index.getX(i) : i);
+    for (let i = 0; i + 2 < n; i += 3) {
+      a.fromBufferAttribute(pos, at(i)); b.fromBufferAttribute(pos, at(i + 1)); c.fromBufferAttribute(pos, at(i + 2));
+      vol += a.dot(ab.crossVectors(b, c)) / 6;
+      area += ab.subVectors(b, a).cross(ac.subVectors(c, a)).length() / 2;
+      tris++;
+    }
+  });
+  const out = { volume: Math.abs(vol) * s ** 3, area: area * s * s, tris };
+  statsCache.set(raw, out);
+  return out;
+}
+const fmtNum = (n, d = 2) => n.toLocaleString([], { minimumFractionDigits: d, maximumFractionDigits: d });
+const fmtBytes = (n) => (n >= 1048576 ? `${fmtNum(n / 1048576, 1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
+const esc = (t) => String(t).replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+
+function showCard(key) { cardFor = key; renderCard(); }
+function hideCard() { cardFor = null; renderCard(); }
+function renderCard() {
+  const slot = cardFor && slotList.find((x) => x.key === cardFor);
+  highlight(slot && slot.id);
+  if (!slot || view === 'interfaces') { cardEl.hidden = true; return; }
+  cardEl.hidden = false;
+  const b = slot.id && blocks[slot.id];
+  const color = chipColor(slot);
+  let body;
+  if (!b) {
+    body = `<p class="empty">${historyAt === null ? 'Not published yet.' : 'Not published yet at this point in the history.'}</p>`;
+  } else {
+    const st = meshStats(b.raw);
+    const boxVol = b.size.x * b.size.y * b.size.z;
+    const solidOk = st.volume > 0 && st.volume <= boxVol * 1.02;
+    const near = contacts(slot.id);
+    let touching = 0;
+    for (const c of near) {
+      const sign = c.side ? 1 : -1;
+      const forward = new THREE.Vector3().setComponent(c.a, -sign);
+      const up = c.a === 2 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(0, 0, 1);
+      const tol = Math.max(nominal * 0.005, Math.abs(c.gap) / 2 + nominal * 0.003);
+      touching += flatten(b, c.a, c.plane, tol, new THREE.Vector3().crossVectors(forward, up), up).area;
+    }
+    const names = near.map((c) => slotList.find((x) => x.id === c.hid)?.short || c.hid).join(', ');
+    const v = groupVersions[slot.id]?.[b.version];
+    body = `<dl>
+      <dt>Size</dt><dd>${fmtNum(b.size.x)} × ${fmtNum(b.size.y)} × ${fmtNum(b.size.z)} m</dd>
+      ${solidOk ? `<dt>Volume</dt><dd>${fmtNum(st.volume, 3)} m³ <small>(${fmtNum(st.volume * 1000, 0)} L)</small></dd>
+      <dt>Void</dt><dd>${fmtNum((1 - st.volume / boxVol) * 100, 0)}% <small>of its bounding box</small></dd>
+      <dt>In stone</dt><dd>≈ ${fmtNum(st.volume * STONE_DENSITY, 0)} kg <small>(sandstone, 2.3 t/m³)</small></dd>`
+      : `<dt>Volume</dt><dd><small>can't tell: the model isn't one closed solid</small></dd>`}
+      <dt>Surface</dt><dd>${fmtNum(st.area)} m²</dd>
+      <dt>Touching</dt><dd>${near.length ? `${near.length} ${near.length === 1 ? 'cube' : 'cubes'} <small>(group ${esc(names)})</small>, ${fmtNum(touching)} m²` : '<small>no other cube</small>'}</dd>
+      <dt>Model</dt><dd>${fmtNum(st.tris, 0)} triangles${v && v.size ? ` <small>· ${fmtBytes(v.size)} file</small>` : ''}</dd>
+    </dl>`;
+  }
+  const sub = !b ? '' : `${b.versionCount > 1 ? `Version ${b.version + 1} of ${b.versionCount} · ` : ''}published ${historyAt === null ? timeAgo(b.publishedAt) : 'at ' + clock(b.publishedAt)}`;
+  cardEl.innerHTML = `<header><span class="chip" style="--c:${esc(color)}"></span><h2>${esc(slot.name)}</h2>
+      <button class="close" type="button" aria-label="Close">×</button></header>
+    ${sub ? `<p class="sub">${sub}</p>` : ''}${body}
+    <div class="row"><button type="button" data-act="single">One by one</button><button type="button" data-act="interfaces">Interfaces</button></div>
+    ${b ? `<div class="row"><span>Download .3dm:</span><button type="button" data-act="dl-this">This version</button>
+      ${b.versionCount > 1 ? `<button type="button" data-act="dl-versions">All ${b.versionCount} versions</button>` : ''}
+      <button type="button" data-act="dl-all">Every group</button></div>` : ''}`;
+  cardEl.querySelector('.close').onclick = hideCard;
+  cardEl.querySelectorAll('[data-act]').forEach((btn) => {
+    btn.onclick = () => {
+      const act = btn.dataset.act;
+      if (act === 'single' || act === 'interfaces') return setView(act, { group: slot.key });
+      download(act, slot, btn);
+    };
+  });
+}
+// The clicked cube glows a little.
+function highlight(id) {
+  for (const [bid, b] of Object.entries(blocks)) {
+    b.raw.traverse((o) => {
+      if (!o.isMesh) return;
+      o.material.emissive.set(bid === id ? '#ffffff' : '#000000');
+      o.material.emissiveIntensity = bid === id ? 0.14 : 0;
+    });
+  }
+}
+
+// ---------- downloads: the published .3dm files, named after the group, version and time
+const stamp = (t) => {
+  const d = new Date(t), p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}`;
+};
+const safe = (t) => String(t).replace(/[^\w.-]+/g, '-').replace(/^-+|-+$/g, '');
+const fileName = (slot, idx, v) => `${safe(TITLE)}_${safe(slot.name)}_v${idx + 1}_${stamp(v.publishedAt)}.3dm`;
+async function fetchBytes(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`${res.status} for ${url}`);
+  return new Uint8Array(await res.arrayBuffer());
+}
+function saveFile(bytes, name, type) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([bytes], { type }));
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+}
+async function download(act, slot, btn) {
+  const label = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Preparing…';
+  try {
+    if (act === 'dl-this') {
+      const b = blocks[slot.id], v = groupVersions[slot.id][b.version];
+      saveFile(await fetchBytes(v.url), fileName(slot, b.version, v), 'application/octet-stream');
+    } else {
+      // Several files: one zip (.3dm files are already compressed, so they're stored as they are).
+      const files = [];
+      if (act === 'dl-versions') groupVersions[slot.id].forEach((v, i) => files.push([fileName(slot, i, v), v.url]));
+      else for (const s of slotList) if (s.id && blocks[s.id]) {
+        const b = blocks[s.id], v = groupVersions[s.id][b.version];
+        files.push([fileName(s, b.version, v), v.url]);
+      }
+      const { zipSync } = await import('fflate');
+      const entries = {};
+      for (const [name, url] of files) entries[name] = [await fetchBytes(url), { level: 0 }];
+      const what = act === 'dl-versions' ? `${safe(slot.name)}_all-versions` : historyAt === null ? 'all-groups' : `all-groups_as-of_${stamp(historyAt)}`;
+      saveFile(zipSync(entries), `${safe(TITLE)}_${what}_${stamp(Date.now())}.zip`, 'application/zip');
+    }
+  } catch (err) {
+    console.warn(err);
+    statusNote = { until: Date.now() + 8000, text: `Download failed (${err.message}).` };
+    renderStatus();
+  } finally {
+    btn.disabled = false;
+    btn.textContent = label;
+  }
+}
+
 // ---------- animation
 function snapCamera() {
   if (!camGoal) return;
@@ -1815,12 +2111,14 @@ renderer.setAnimationLoop(() => {
 });
 
 applyLight();
+if (rockOn) setRock(true);
+document.getElementById('color-name').textContent = MODE_NAMES[mode];
 setView(view);
 snapCamera();
 from = view;
 poll();
 setInterval(poll, POLL_MS);
-setInterval(() => { renderGroups(); renderContext(); renderStatus(); renderHistory(); }, 15000);
+setInterval(() => { renderGroups(); renderContext(); renderStatus(); renderHistory(); renderCard(); }, 15000);
 </script>
 </body>
 </html>

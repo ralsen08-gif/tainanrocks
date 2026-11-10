@@ -1,6 +1,6 @@
 # Workshop Live
 
-Each group designs one piece (a cube) in Rhino and presses **Publish**. The class screen updates within about 10 seconds and has four views; the pieces glide between them:
+Each group designs one piece (a cube) in Rhino and presses **Publish**. The class screen picks up new models by itself within about a minute, or straight away when you press **Update**, and has four views; the pieces glide between them:
 
 - **Combined**: all pieces together at their real Rhino coordinates (e.g. eight cubes forming one 2×2×2 cube)
 - **Exploded**: the same, with every piece pushed away from the centre; a slider sets the separation
@@ -44,7 +44,7 @@ Rhino (optional)    ◀───────────  /api/state  (WorkshopS
 - **Template file:** give every group the same .3dm with each group's cube already at its place in the combined shape (real coordinates), so the **Combined** view assembles itself without anyone moving anything. The viewer centres each group's piece on its own plate, so position only matters for Combined.
 - **Group numbers:** the publish script asks each group for its number (Group 1 … 8) and uploads under that number, so it matches the chip with the same number on the screen. For more or fewer groups, change `GROUPS` at the top of `WorkshopPublish.py` and open the screen with `?groups=`.
 - **Colours:** the screen uses each object's colour from Rhino (object colour, or the layer colour if that isn't black). Pieces without a colour get the group's colour: 1 grey, 2 yellow, 3 green, 4 dark green, 5 red, 6 light red, 7 cyan, 8 purple.
-- **Dry run:** publish from two laptops on the classroom Wi-Fi and check the screen updates.
+- **Dry run:** publish from two laptops on the classroom Wi-Fi, press **Update** on the screen and check both cubes appear.
 
 ## Students: installing the Publish button
 
@@ -71,6 +71,7 @@ Open your Vercel URL fullscreen (F11). Drag to orbit, scroll to zoom.
 | **C** | Colours: model colours / group colours / white model |
 | **L** | Group labels |
 | **F** | Fit the view |
+| **U** | Update: load the newest models now (see below) |
 
 Click a cube, or a group chip at the bottom left, to open that group in One by one. Each chip shows when the group last published; a dot marks the ones published in the last 90 seconds.
 
@@ -96,6 +97,7 @@ curl -X DELETE "https://your-project.vercel.app/api/publish?block=3" -H "x-works
 
 - Each publish uses 2 of the 2,000 monthly "advanced" Blob operations, so roughly 900 publishes a month. A 3-hour workshop with 8 groups publishing every 10 minutes uses about 300.
 - The screen reads the server about 10 times a minute no matter how many browsers are open, well inside the free read allowance. Close the viewer outside class hours.
+- Those reads go through Vercel's cache, which can be up to a minute behind, so a new publish takes up to a minute to appear by itself. **Update** (U) skips the cache and costs 2 Blob operations per press, so pressing it a few dozen times a session is fine; don't script it.
 - Uploads are capped at 4 MB per group (Vercel's request limit is 4.5 MB). Massing models are usually well under 1 MB.
 
 ## Troubleshooting

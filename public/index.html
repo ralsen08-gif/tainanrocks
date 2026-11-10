@@ -78,6 +78,7 @@
   .keys { font-size: 13px; color: var(--muted); text-align: right; line-height: 1.7; pointer-events: auto; }
   .keys button { color: var(--ink); background: var(--paper); border: 1px solid var(--rule);
     border-radius: 4px; padding: 3px 9px; margin-left: 6px; cursor: pointer; }
+  .keys button:disabled { opacity: .6; cursor: progress; }
   .keys button[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
   .keys kbd { font: inherit; font-weight: 700; }
 
@@ -146,6 +147,7 @@
   <nav class="groups" id="groups" aria-label="Groups: click one to view it on its own"></nav>
   <div class="keys">
     <span class="hint">Drag to orbit, scroll to zoom, click a cube to open it</span><br>
+    <button id="btn-update" title="Load the newest models now, without waiting for the cache (U)"><kbd>U</kbd> <span>Update</span></button>
     <button id="btn-rotate" aria-pressed="true" title="Slowly orbit the model (R)"><kbd>R</kbd> Rotate</button>
     <button id="btn-color" title="Switch colors: model, groups, white (C)"><kbd>C</kbd> <span id="color-name">Model colors</span></button>
     <button id="btn-labels" aria-pressed="true" title="Show group labels (L)"><kbd>L</kbd> Labels</button>
@@ -637,12 +639,16 @@ let firstLoad = true;
 let lastEvent = null;
 const statusEl = document.getElementById('status');
 const slotName = (id) => (groupNumber(id) ? `Group ${groupNumber(id)}` : id);
+let statusNote = null;  // { text, until }: a short message after pressing Update
 function renderStatus() {
   if (statusEl.classList.contains('error')) return;
   const n = slotList.filter((s) => s.id).length;
-  if (n === 0) statusEl.textContent = 'No groups yet. Press Publish in Rhino and your cube appears here.';
-  else statusEl.textContent = `${n} of ${Math.max(GROUPS, slotList.length)} groups published.` +
+  let text;
+  if (n === 0) text = 'No groups yet. Press Publish in Rhino and your cube appears here.';
+  else text = `${n} of ${Math.max(GROUPS, slotList.length)} groups published.` +
     (lastEvent ? ` ${slotName(lastEvent.id)} updated at ${clock(lastEvent.at)}.` : '');
+  if (statusNote && Date.now() < statusNote.until) text += ` ${statusNote.text}`;
+  statusEl.textContent = text;
 }
 
 function pulse(id) {
@@ -654,37 +660,60 @@ function pulse(id) {
   }
 }
 
+// The regular poll reads a cached list (cheap, but up to about a minute old).
+// poll(true) is the Update button: it asks the server to read past the cache.
+const btnUpdate = document.getElementById('btn-update');
+function stateUrl(fresh) {
+  if (!fresh) return STATE_URL;
+  const u = new URL(STATE_URL, location.href);
+  u.searchParams.set('fresh', '1');
+  return u.toString();
+}
 let polling = false;
-async function poll() {
-  if (polling) return;
+let freshQueued = false;
+let newestList = 0;     // updatedAt of the newest list we've shown
+async function poll(fresh = false) {
+  if (polling) { if (fresh) freshQueued = true; return; }
   polling = true;
+  if (fresh) { btnUpdate.disabled = true; btnUpdate.querySelector('span').textContent = 'Updating…'; }
   let changed = firstLoad;
   const updated = [];
   try {
-    const res = await fetch(STATE_URL, { cache: 'no-store' });
+    const res = await fetch(stateUrl(fresh), { cache: 'no-store' });
     if (!res.ok) throw new Error(`Server answered ${res.status}`);
     const state = await res.json();
     statusEl.classList.remove('error');
-    const entries = state.blocks || {};
-    delete entries.CONTEXT; // the old city-block context model has no place in these views
-
-    for (const id of Object.keys(blocks)) if (!entries[id]) { removeBlock(id); changed = true; }
-    for (const [id, entry] of Object.entries(entries)) {
-      if (blocks[id] && blocks[id].url === entry.url) continue;
-      try {
-        const { raw, modelColor } = await buildGroup(id, entry.url);
-        const wasThere = !!blocks[id];
-        removeBlock(id);
-        addBlock(id, entry, raw, modelColor);
-        if (!firstLoad || wasThere) { lastEvent = { id, at: entry.publishedAt }; updated.push(id); }
-        changed = true;
-      } catch (err) {
-        console.warn(`Could not load ${id}:`, err);
-      }
+    // Right after Update, the cached list can still be older than what's on screen; ignore it
+    // instead of taking a just-published cube away again.
+    const stamp = Date.parse(state.updatedAt) || 0;
+    const outdated = stamp > 0 && stamp < newestList;
+    newestList = Math.max(newestList, stamp);
+    const entries = outdated ? null : state.blocks || {};
+    if (entries) delete entries.CONTEXT; // the old city-block context model has no place in these views
+    if (fresh) {
+      statusNote = { until: Date.now() + 8000, text: state.fresh === false
+        ? 'Storage was busy, so this may not be the newest list yet. Try Update again in a minute.'
+        : `Checked for updates at ${clock(new Date())}.` };
     }
-    if (!lastEvent) {
-      const latest = Object.entries(entries).sort((a, b) => new Date(b[1].publishedAt) - new Date(a[1].publishedAt))[0];
-      if (latest) lastEvent = { id: latest[0], at: latest[1].publishedAt };
+    if (entries) {
+      for (const id of Object.keys(blocks)) if (!entries[id]) { removeBlock(id); changed = true; }
+      for (const [id, entry] of Object.entries(entries)) {
+        if (blocks[id] && blocks[id].url === entry.url) continue;
+        try {
+          const { raw, modelColor } = await buildGroup(id, entry.url);
+          const wasThere = !!blocks[id];
+          removeBlock(id);
+          addBlock(id, entry, raw, modelColor);
+          if (!firstLoad || wasThere) { lastEvent = { id, at: entry.publishedAt }; updated.push(id); }
+          changed = true;
+        } catch (err) {
+          console.warn(`Could not load ${id}:`, err);
+        }
+      }
+      if (!lastEvent) {
+        const latest = Object.entries(entries).sort((a, b) => new Date(b[1].publishedAt) - new Date(a[1].publishedAt))[0];
+        if (latest) lastEvent = { id: latest[0], at: latest[1].publishedAt };
+      }
     }
   } catch (err) {
     statusEl.classList.add('error');
@@ -702,6 +731,8 @@ async function poll() {
     renderGroups();
     renderStatus();
     updated.forEach(pulse);
+    if (fresh) { btnUpdate.disabled = false; btnUpdate.querySelector('span').textContent = 'Update'; }
+    if (freshQueued) { freshQueued = false; poll(true); }
   }
 }
 
@@ -734,6 +765,7 @@ btnRotate.onclick = () => setRotate(!rotateWanted);
 btnLabels.onclick = () => setLabels(btnLabels.getAttribute('aria-pressed') !== 'true');
 document.getElementById('btn-color').onclick = nextMode;
 document.getElementById('btn-fit').onclick = () => frame();
+btnUpdate.onclick = () => poll(true);
 addEventListener('keydown', (e) => {
   if (e.target.closest('button, input') && (e.key === 'Enter' || e.key === ' ')) return;
   if (e.target.matches('input') && e.key.startsWith('Arrow')) return;
@@ -745,6 +777,7 @@ addEventListener('keydown', (e) => {
   else if (k === 'c') nextMode();
   else if (k === 'l') btnLabels.click();
   else if (k === 'f') frame();
+  else if (k === 'u') poll(true);
 });
 // Steering by hand stops the camera glide and pauses the orbit for 20 s.
 controls.addEventListener('start', () => { camGoal = null; controls.autoRotate = false; clearTimeout(resumeTimer); });

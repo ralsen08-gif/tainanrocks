@@ -1,0 +1,10 @@
+{
+  "name": "workshop-live",
+  "private": true,
+  "type": "module",
+  "description": "Live 4x4 block viewer for a Rhino design workshop: students publish from Rhino, the class screen updates.",
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "@vercel/blob": "^2.9.0"
+  }
+}

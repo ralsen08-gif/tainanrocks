@@ -8,7 +8,7 @@ Each group designs one piece (a cube) in Rhino and presses **Publish**. The clas
 - **Matrix**: every group's piece side by side in a grid, with empty spots for groups that haven't published
 - **Interfaces**: 2D drawings of the faces where a group's cube touches another cube (three each in a 2×2×2 cube), next to the neighbour's matching face and both overlaid, ready to print
 
-Every publish is kept, so the **history bar** can step back through the session, version by version, or replay it. **Sun** (S) lights the model with the real sun for any date and time in Tainan, with long shadows, the sun's path and a compass.
+Every publish is kept, so the **history bar** can step back through the session, version by version, or replay it. **Sun** (S) lights the model with the real sun for any date and time in Tainan, with long shadows, the sun's path and a compass. **Animals** (A) brings the structure to life with chibi Taiwanese wildlife.
 
 ```
 Rhino (each group)                 Vercel                          Class screen (browser)
@@ -73,6 +73,7 @@ Open your Vercel URL fullscreen (F11). Drag to orbit, scroll to zoom.
 | **←** **→** | Previous / next group (opens One by one) |
 | **[** **]** | Previous / next update in the history |
 | **S** | Sun on/off |
+| **A** | Animals on/off |
 | **R** | Slow orbit on/off (dragging pauses it for 20 s; the matrix never orbits) |
 | **C** | Colours: model colours / group colours / white model |
 | **L** | Group labels |
@@ -86,6 +87,8 @@ The address keeps the current view, so you can bookmark one: `…/#matrix`, `…
 **History.** The bar above the group chips has a tick for every publish, in the group's colour. Drag the slider, use ‹ › or **[** **]**, or press ▶ to replay the session one update per second. Everything follows the point in time you pick, the interface drawings included; the status line says you're looking back. **● Live** returns to the newest version of every group. The server keeps the last 100 versions per group.
 
 **Sun.** Date and time sliders set the sun for Tainan (latitude 22.99°, longitude 120.21°, UTC+8); ▶ plays the day from 5:00 to 19:30. The model's +Y is taken as north. The orange arc is the sun's path that day, the grey ring the horizon.
+
+**Animals.** Eight little residents: Formosan black bears, leopard cats (石虎), a Formosan rock macaque, a pangolin and Taiwan blue magpies. They find places to stand on the cubes (tops, and cave floors with enough headroom), hop between them, fly and perch (the magpies), turn round to look at you, and now and then say something. They ride along when the cubes move between views and move house when a cube is covered, hidden or replaced by a new version. Click one and it jumps and tells you its name. `?animals=1` starts with them on.
 
 **Interfaces.** For the selected group, one row per face that touches another group's cube: that face (as seen from the neighbour), the neighbour's face (mirrored so the two line up) and both overlaid. Colour is the surface lying in the shared plane, dark lines are its edges, grey lines are edges further back. In the overlay, mixed colour is where the two faces meet, and a single colour is where only one of them has material. Faces count as touching when the cubes' bounding boxes sit within 3% of a cube's size of each other. **Print** prints just the drawings.
 

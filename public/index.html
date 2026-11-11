@@ -171,39 +171,54 @@
   .emote span { display: block; padding: 4px 9px 3px; background: #fff; color: var(--ink); border: 1.5px solid var(--ink);
     border-radius: 10px; font: 700 13px/1.15 'Archivo', system-ui, sans-serif; white-space: nowrap; box-shadow: 0 2px 0 rgba(30,35,42,.2); }
 
-  /* interfaces sheet */
-  .sheet { position: fixed; left: var(--edge); right: var(--edge); top: var(--sheet-top, 150px); bottom: var(--sheet-bottom, 120px);
-    overflow: auto; background: #fff; border: 1px solid var(--rule); border-radius: 8px; padding: 18px 22px; }
+  /* interfaces panel (right of the 3D view; under it on phones) */
+  .sheet { position: fixed; right: var(--edge); width: min(560px, 46vw); top: var(--sheet-top, 150px); bottom: var(--sheet-bottom, 120px);
+    overflow: auto; background: #fff; border: 1px solid var(--rule); border-radius: 8px; padding: 16px 18px; }
   .sheet[hidden] { display: none; }
-  .sheet header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 6px; }
-  .sheet h2 { margin: 0; font-size: 22px; font-weight: 780; font-variation-settings: 'wdth' 125; }
-  .sheet .note { color: var(--muted); font-size: 14px; line-height: 1.45; margin: 6px 0 0; max-width: 78ch; }
-  .sheet .empty { color: var(--muted); font-size: 15px; margin: 18px 0; }
-  .sheet .iface { border-top: 1px solid #e3e6e8; padding: 14px 0 6px; margin-top: 10px; }
-  .sheet h3 { margin: 0 0 10px; font-size: 16px; font-weight: 700; }
-  .sheet h3 small { color: var(--muted); font-weight: 500; font-size: 14px; }
-  .sheet .drawings { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
-  .sheet figure { margin: 0; }
-  .sheet svg { display: block; width: 100%; height: auto; max-height: 36vh; background: #fbfbfa;
-    border: 1px solid #e3e6e8; border-radius: 4px; }
-  .sheet svg * { vector-effect: non-scaling-stroke; }
-  .sheet figcaption { font-size: 13px; margin-top: 6px; line-height: 1.4; }
-  .sheet figcaption span { color: var(--muted); }
-  .sheet .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: var(--c);
-    margin-right: 5px; vertical-align: -1px; box-shadow: 0 0 0 1px rgba(30,35,42,.2); }
+  .sheet header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+  .sheet h2 { margin: 0; font-size: 21px; font-weight: 780; font-variation-settings: 'wdth' 125; }
+  .sheet h3 { margin: 14px 0 2px; font-size: 16px; font-weight: 700; }
+  .sheet .note { color: var(--muted); font-size: 13.5px; line-height: 1.45; margin: 5px 0 0; }
+  .sheet .empty { color: var(--muted); font-size: 15px; margin: 16px 0; }
+  .sheet .faces { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 6px; margin-top: 10px; }
+  .sheet .faces button { display: grid; grid-template-columns: auto 1fr; gap: 1px 9px; align-items: center; text-align: left;
+    padding: 7px 10px; border: 1px solid var(--rule); border-radius: 6px; background: #fff; cursor: pointer; }
+  .sheet .faces button:hover { background: #f1f3f4; }
+  .sheet .faces button[aria-selected="true"] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); background: var(--paper); }
+  .sheet .faces b { font-weight: 700; font-size: 14px; white-space: nowrap; }
+  .sheet .faces small { grid-column: 2; color: var(--muted); font-size: 12.5px; }
+  .sheet .detail { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(140px, 1fr); gap: 12px; align-items: start; margin-top: 8px; }
+  .sheet .drawing { margin: 0; }
+  .sheet .drawing canvas { display: block; width: 100%; height: auto; max-height: 36vh; object-fit: contain; border-radius: 3px; }
+  .sheet .drawing figcaption { font-size: 12.5px; color: var(--muted); margin-top: 5px; }
+  .sheet .big { display: grid; gap: 8px; }
+  .sheet .big div { padding: 9px 11px; border-radius: 6px; background: var(--paper); border: 1px solid #e3e6e8; }
+  .sheet .big b { display: block; font-size: 20px; font-weight: 780; font-variation-settings: 'wdth' 110; font-variant-numeric: tabular-nums; }
+  .sheet .big span { display: block; font-size: 13px; color: var(--muted); line-height: 1.35; }
+  .sheet .big .key { margin-right: 5px; }
+  .sheet table { width: 100%; border-collapse: collapse; font-size: 13.5px; margin-top: 8px; font-variant-numeric: tabular-nums; }
+  .sheet td { padding: 4px 0; border-top: 1px solid #eceff1; }
+  .sheet td + td { text-align: right; padding-left: 12px; white-space: nowrap; }
+  .sheet tr.total td { font-weight: 700; border-top: 1.5px solid var(--rule); }
+  .key { display: inline-block; width: 13px; height: 13px; border-radius: 2px; margin-right: 7px; vertical-align: -2px;
+    background: var(--c); box-shadow: 0 0 0 1px rgba(30,35,42,.25); }
+  .key.touch { background: #59616b; }
+  .key.open { background: repeating-linear-gradient(135deg, #b3261e 0 2px, #fff 2px 6px); }
   .sheet .print { border: 1px solid var(--rule); background: var(--paper); border-radius: 4px; padding: 5px 12px; cursor: pointer; flex: none; }
   @media print {
     html, body { height: auto; overflow: visible; background: #fff; }
     #view, .top, .bottom { display: none !important; }
-    .sheet { position: static; border: 0; padding: 0; overflow: visible; }
-    .sheet .print { display: none; }
-    .sheet .iface { break-inside: avoid; }
-    .sheet svg { max-height: none; }
+    .sheet { position: static; width: auto; border: 0; padding: 0; overflow: visible; }
+    .sheet .print, .sheet .faces { display: none; }
+    .sheet .drawing canvas { max-height: none; width: 70%; }
   }
 
   @media (max-width: 760px) {
     :root { --cell: 40px; --gap: 5px; --edge: 16px; }
-    .sheet .drawings { grid-template-columns: 1fr; }
+    .sheet { left: var(--edge); width: auto; top: max(var(--sheet-top, 150px), 46vh); }
+    .sheet .detail { grid-template-columns: 1fr; }
+    body[data-view="interfaces"] .keys, body[data-view="interfaces"] .credits { display: none; }   /* room for the panel */
+    .history .track { min-width: 70px; }
     .history { flex-wrap: wrap; }
     .history .when { min-width: 0; flex-basis: 100%; order: 9; }
     .top { top: 16px; }
@@ -742,6 +757,23 @@ function layout() {
   const C = nominal * 2.1;
   const cell = (i) => new THREE.Vector3((i % cols - (cols - 1) / 2) * C, ((rows - 1) / 2 - Math.floor(i / cols)) * C, 0);
 
+  // Interfaces: the selected cube and the cubes it touches, pulled apart along each contact, on the ground.
+  const ifaceAt = {};
+  if (view === 'interfaces') {
+    const sel = slotList.find((s) => s.key === selected);
+    const g = sel && sel.id && blocks[sel.id];
+    if (g && !g.box.isEmpty()) {
+      ifaceAt[sel.id] = new THREE.Vector3();
+      for (const c of contacts(sel.id)) {
+        const t = blocks[c.hid].center.clone().sub(g.center);
+        t.setComponent(c.a, t.getComponent(c.a) + (c.side ? 1 : -1) * IFACE_GAP());
+        ifaceAt[c.hid] = t;
+      }
+      let floor = Infinity;
+      for (const [id, t] of Object.entries(ifaceAt)) floor = Math.min(floor, t.z - blocks[id].size.z / 2);
+      for (const t of Object.values(ifaceAt)) t.z -= floor;
+    }
+  }
   const bounds = new THREE.Box3();
   slotList.forEach((s, i) => {
     const b = s.id && blocks[s.id];
@@ -754,12 +786,15 @@ function layout() {
       let target = inCombined, scale = 1;
       if (view === 'exploded') { target = inCombined.clone().addScaledVector(b.center.clone().sub(cc), explode); target.z += lift; }
       else if (view === 'matrix') target = c.clone().setZ(half);
-      else if (view === 'single' || view === 'interfaces') { if (s.key === selected) target = new THREE.Vector3(0, 0, half); else scale = 0; }
+      else if (view === 'single') { if (s.key === selected) target = new THREE.Vector3(0, 0, half); else scale = 0; }
+      else if (view === 'interfaces') { if (ifaceAt[s.id]) target = ifaceAt[s.id]; else scale = 0; }
       const h = b.holder.userData;
       h.target.copy(target); h.scale = scale;
       if (h.snap) { b.holder.position.copy(target); h.snap = false; }
       if (scale) bounds.union(new THREE.Box3().setFromCenterAndSize(target, b.size));
-      if (view === 'exploded') { label.userData.target.copy(target).setZ(target.z + half + nominal * 0.08); label.center.set(0.5, 1); show = true; }
+      if (view === 'exploded' || (view === 'interfaces' && scale)) {
+        label.userData.target.copy(target).setZ(target.z + half + nominal * 0.08); label.center.set(0.5, 1); show = true;
+      }
     }
     if (view === 'matrix') { label.userData.target.copy(c).setY(c.y - C * 0.4); label.center.set(0.5, -0.25); show = true; }
     if (!label.userData.placed) { label.position.copy(label.userData.target); label.userData.placed = true; }
@@ -769,7 +804,7 @@ function layout() {
     el.style.setProperty('--c', chipColor(s));
     el.style.setProperty('--fg', textOn(chipColor(s)));
     el.firstChild.innerHTML = '';
-    el.firstChild.append(view === 'matrix' ? s.name : s.short);
+    el.firstChild.append(view === 'matrix' || view === 'interfaces' ? s.name : s.short);
     if (view === 'matrix' && !b) el.firstChild.append(Object.assign(document.createElement('small'), { textContent: ' · waiting' }));
   });
   for (const key of Object.keys(labels)) {
@@ -819,9 +854,11 @@ function frame(box = currentBounds, dir = camGoal?.dir || camera.position.clone(
   if (right.lengthSq() < 1e-8) right.set(1, 0, 0);   // looking straight up or down
   right.normalize();
   const up = new THREE.Vector3().crossVectors(right, dir.clone().negate());
-  const margin = presenting ? 0.85 : camera.aspect < 1 ? 0.7 : 0.6;   // fill more of the screen without controls
-  const ty = Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) * margin;
-  const tx = ty * camera.aspect;
+  let margin = presenting ? 0.85 : camera.aspect < 1 ? 0.7 : 0.6;   // fill more of the screen without controls
+  const inset = viewInsets();   // part of the screen taken by the interfaces panel and the bars
+  if (inset.right || inset.bottom || inset.top) margin = 0.92;
+  const ty = Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) * margin * (1 - (inset.bottom + inset.top) / innerHeight);
+  const tx = Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) * margin * camera.aspect * (1 - inset.right / innerWidth);
   let dist = 0;
   for (let i = 0; i < 8; i++) {
     const v = new THREE.Vector3(i & 1 ? box.max.x : box.min.x, i & 2 ? box.max.y : box.min.y, i & 4 ? box.max.z : box.min.z).sub(c);
@@ -864,6 +901,7 @@ let from = null;
 function setView(v, opts = {}) {
   from = from === null ? null : view;
   view = v;
+  document.body.dataset.view = v;
   if (opts.group) {
     selected = opts.group;
     if (cardFor) cardFor = opts.group;   // the open card follows the group being shown
@@ -872,6 +910,8 @@ function setView(v, opts = {}) {
   ctxExploded.hidden = view !== 'exploded';
   ctxSingle.hidden = view !== 'single' && view !== 'interfaces';
   sheetEl.hidden = view !== 'interfaces';
+  if (view === 'interfaces') faceSel = opts.face ?? 0;
+  renderInterfaces();
   // The matrix reads best from the front and standing still; the other views from the corner, orbiting.
   const box = layout();
   if (view === 'matrix') frame(box, MATRIX_DIR);
@@ -1062,6 +1102,10 @@ renderer.domElement.addEventListener('pointerup', (e) => {
   if (!downAt || Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 5) return;
   const p = new THREE.Vector2((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
   raycaster.setFromCamera(p, camera);
+  if (view === 'interfaces') {   // a face sheet opens that face; a neighbour becomes the cube in focus
+    const sheetHit = raycaster.intersectObjects(faceGroup.children.filter((o) => o.isMesh), false)[0];
+    if (sheetHit) { faceSel = sheetHit.object.userData.face; renderInterfaces(); return; }
+  }
   if (animalsOn) {   // poking an animal makes it jump and say who it is
     const bodies = [];
     for (const c of critters) if (c.root.visible) c.root.traverse((o) => { if (o.isMesh && o.userData.critter) bodies.push(o); });
@@ -1074,6 +1118,7 @@ renderer.domElement.addEventListener('pointerup', (e) => {
   if (!hit) { hideCard(); return; }   // clicking empty space closes the card
   const slot = slotList.find((s) => s.id === hit.object.userData.blockId);
   if (!slot) return;
+  if (view === 'interfaces') { if (slot.key !== selected) setView('interfaces', { group: slot.key }); return; }
   selected = slot.key;
   showCard(slot.key);
   renderGroups();
@@ -1354,7 +1399,6 @@ const sheetEl = document.getElementById('sheet');
 const SIDE_NAMES = [['west', 'east'], ['south', 'north'], ['bottom', 'top']];
 const AXIS = ['x', 'y', 'z'];
 const fmtLen = (m) => (Math.abs(m) >= 1 ? `${m.toFixed(2)} m` : `${(m * 100).toFixed(1)} cm`);
-const fmtArea = (a) => (a >= 0.1 ? `${a.toFixed(2)} m²` : `${(a * 1e4).toFixed(0)} cm²`);
 
 // Other cubes sitting against this one: they share a face plane (within 3% of a cube's size)
 // and overlap across it. A 2×2×2 arrangement gives every cube three.
@@ -1422,32 +1466,135 @@ function faceRect(box, right, up) {
   }
   return [u0, v0, u1, v1];
 }
-function svgDrawing(frame, layers, title) {
-  const [u0, v0, u1, v1] = frame;
-  const f = (n) => +n.toFixed(5);
-  const pt = (u, v) => `${f(u)},${f(-v)}`;
-  let out = `<svg viewBox="${f(u0)} ${f(-v1)} ${f(u1 - u0)} ${f(v1 - v0)}" xmlns="http://www.w3.org/2000/svg" role="img"><title>${title}</title>`;
-  for (const L of layers) {
-    if (L.rect) {
-      const [a0, b0, a1, b1] = L.rect;
-      out += `<rect x="${f(a0)}" y="${f(-b1)}" width="${f(a1 - a0)}" height="${f(b1 - b0)}" fill="none" stroke="#b9c1c8" stroke-width="1" stroke-dasharray="5 4"/>`;
+// ---- one shared face, drawn as the neighbour sees it: where both cubes are solid (they touch),
+// where both are open (the voids connect), and where only one of them has material. The areas are
+// counted on the same 720-px raster (≈ 0.6 mm per pixel on a 0.45 m face).
+const TOUCH_COLOR = '#59616b', OPEN_HATCH = '#b3261e';
+const IFACE_GAP = () => nominal * 0.6;   // how far neighbours are pulled away in the 3D view
+const drawCache = new Map();
+const rgbBytes = (css) => { const n = new THREE.Color(css).getHex(); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+function faceAxes(c) {
+  const forward = new THREE.Vector3().setComponent(c.a, c.side ? -1 : 1);   // looking at the face from the neighbour
+  const up = c.a === 2 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(0, 0, 1);
+  return { right: new THREE.Vector3().crossVectors(forward, up), up };
+}
+function interfaceDrawing(gid, c) {
+  const g = blocks[gid], h = blocks[c.hid];
+  const gSlot = slotList.find((x) => x.id === gid), hSlot = slotList.find((x) => x.id === c.hid);
+  const colG = gSlot ? chipColor(gSlot) : groupColor(gid), colH = hSlot ? chipColor(hSlot) : groupColor(c.hid);
+  const key = [g.url, h.url, c.a, c.side, colG, colH].join('|');
+  if (drawCache.has(key)) return drawCache.get(key);
+
+  const { right, up } = faceAxes(c);
+  const tol = Math.max(nominal * 0.005, Math.abs(c.gap) / 2 + nominal * 0.003);
+  const mine = flatten(g, c.a, c.plane, tol, right, up), theirs = flatten(h, c.a, c.plane, tol, right, up);
+  const rG = faceRect(g.box, right, up), rH = faceRect(h.box, right, up);
+  let rect = [Math.max(rG[0], rH[0]), Math.max(rG[1], rH[1]), Math.min(rG[2], rH[2]), Math.min(rG[3], rH[3])];
+  if (rect[2] <= rect[0] || rect[3] <= rect[1]) rect = rG;
+  const [u0, v0, u1, v1] = rect;
+  const W = 720, H = Math.max(1, Math.round(W * (v1 - v0) / (u1 - u0)));
+  const X = (u) => (u - u0) / (u1 - u0) * W, Y = (v) => (v1 - v) / (v1 - v0) * H;
+  const mask = (fills) => {
+    const cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    const ctx = cv.getContext('2d');
+    ctx.fillStyle = ctx.strokeStyle = '#000';
+    ctx.lineWidth = 1.2;   // a hair of stroke closes the seams between triangles
+    ctx.lineJoin = 'round';
+    for (const t of fills) {
+      ctx.beginPath();
+      ctx.moveTo(X(t[0][0]), Y(t[0][1])); ctx.lineTo(X(t[1][0]), Y(t[1][1])); ctx.lineTo(X(t[2][0]), Y(t[2][1]));
+      ctx.closePath(); ctx.fill(); ctx.stroke();
     }
-    if (L.fills && L.fills.length) {
-      out += `<g fill="${L.color}" stroke="${L.color}" stroke-width="0.75" opacity="${L.opacity}" style="mix-blend-mode:multiply">`;
-      for (const t of L.fills) out += `<polygon points="${t.map(([u, v]) => pt(u, v)).join(' ')}"/>`;
-      out += '</g>';
-    }
-    if (L.edges) {
-      let back = '', front = '';
-      for (const [a, b, c, d, on] of L.edges) {
-        const seg = `M${pt(a, b)}L${pt(c, d)}`;
-        if (on) front += seg; else if (L.back) back += seg;
-      }
-      if (back) out += `<path d="${back}" fill="none" stroke="#a9b2bb" stroke-width="0.8"/>`;
-      if (front) out += `<path d="${front}" fill="none" stroke="${L.ink || '#1e232a'}" stroke-width="1.6" stroke-linecap="round"/>`;
-    }
+    return ctx.getImageData(0, 0, W, H).data;
+  };
+  const A = mask(mine.fills), B = mask(theirs.fills);
+  const out = document.createElement('canvas');
+  out.width = W; out.height = H;
+  const octx = out.getContext('2d');
+  const img = octx.createImageData(W, H);
+  const cG = rgbBytes(colG), cH = rgbBytes(colH), cT = rgbBytes(TOUCH_COLOR), cR = rgbBytes(OPEN_HATCH), cW = [255, 255, 255];
+  let nT = 0, nO = 0, nG = 0, nH = 0;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const i = (y * W + x) * 4, a = A[i + 3] > 127, b = B[i + 3] > 127;
+    let col;
+    if (a && b) { nT++; col = cT; } else if (a) { nG++; col = cG; } else if (b) { nH++; col = cH; } else { nO++; col = (x + y) % 16 < 3 ? cR : cW; }
+    img.data[i] = col[0]; img.data[i + 1] = col[1]; img.data[i + 2] = col[2]; img.data[i + 3] = 255;
   }
-  return out + '</svg>';
+  octx.putImageData(img, 0, 0);
+  const strokeEdges = (list, dash, width) => {
+    octx.save();
+    octx.strokeStyle = '#1e232a'; octx.lineWidth = width; octx.setLineDash(dash); octx.lineCap = 'round';
+    octx.beginPath();
+    for (const [a, b, c2, d, on] of list) if (on) { octx.moveTo(X(a), Y(b)); octx.lineTo(X(c2), Y(d)); }
+    octx.stroke();
+    octx.restore();
+  };
+  strokeEdges(mine.edges, [], 2.6);          // this cube's edges in the plane
+  strokeEdges(theirs.edges, [10, 7], 2);     // the neighbour's, dashed
+  octx.strokeStyle = '#1e232a'; octx.lineWidth = 2; octx.strokeRect(1, 1, W - 2, H - 2);
+  const px = (u1 - u0) * (v1 - v0) / (W * H);
+  const result = { canvas: out, rect, right, up, colG, colH, w: u1 - u0, h: v1 - v0, face: (u1 - u0) * (v1 - v0),
+    touch: nT * px, open: nO * px, gOnly: nG * px, hOnly: nH * px };
+  drawCache.set(key, result);
+  if (drawCache.size > 60) drawCache.delete(drawCache.keys().next().value);
+  return result;
+}
+
+// ---- the drawings as sheets in the 3D view, halfway across each gap, clickable
+const faceGroup = new THREE.Group();
+let faceSel = 0;
+function buildFaceSheets(gid, list = [], drawings = []) {
+  faceGroup.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) { o.material.map?.dispose(); o.material.dispose(); } });
+  faceGroup.clear();
+  faceGroup.removeFromParent();
+  if (!gid || !blocks[gid]) return;
+  const g = blocks[gid];
+  g.holder.add(faceGroup);
+  list.forEach((c, i) => {
+    const d = drawings[i], [u0, v0, u1, v1] = d.rect;
+    const along = c.plane + (c.side ? 1 : -1) * IFACE_GAP() / 2;
+    const P = (u, v) => new THREE.Vector3().addScaledVector(d.right, u).addScaledVector(d.up, v).setComponent(c.a, along).sub(g.center);
+    const corners = [P(u0, v0), P(u1, v0), P(u1, v1), P(u0, v1)];
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(corners.flatMap((p) => [p.x, p.y, p.z]), 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, 1, 0, 1, 1, 0, 1], 2));
+    geo.setIndex([0, 1, 2, 0, 2, 3]);
+    const tex = new THREE.CanvasTexture(d.canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = MAX_ANISO;
+    const on = i === faceSel;
+    const sheet = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide, transparent: true, opacity: on ? 1 : 0.7, depthWrite: false }));
+    sheet.userData.face = i;
+    sheet.renderOrder = 2;
+    faceGroup.add(sheet);
+    const outline = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(corners),
+      new THREE.LineBasicMaterial({ color: on ? '#b3261e' : '#1e232a', transparent: true, opacity: on ? 1 : 0.5 }));
+    outline.renderOrder = 3;
+    faceGroup.add(outline);
+  });
+}
+
+const fmtM2 = (a) => `${a.toFixed(a < 0.01 ? 4 : 3)} m²`;
+const pct = (a, of) => `${of > 0 ? Math.round((a / of) * 100) : 0}%`;
+const faceTitle = (c) => (c.a === 2 ? (c.side ? 'Top' : 'Bottom') : SIDE_NAMES[c.a][c.side][0].toUpperCase() + SIDE_NAMES[c.a][c.side].slice(1));
+
+// Where the 3D view has to stay clear of the panel (right on wide screens, bottom on phones).
+// In Interfaces the model gets the space left of the panel, between the title and the bottom bar
+// (on phones: between the controls and the panel underneath).
+function viewInsets() {
+  if (view !== 'interfaces' || presenting || sheetEl.hidden) return { right: 0, bottom: 0, top: 0 };
+  const panel = sheetEl.getBoundingClientRect();
+  if (innerWidth > 760) {
+    return { right: innerWidth - panel.left + 8, top: document.querySelector('.title').getBoundingClientRect().bottom + 8,
+      bottom: innerHeight - document.querySelector('.bottom').getBoundingClientRect().top + 8 };
+  }
+  return { right: 0, top: document.querySelector('.top').getBoundingClientRect().bottom + 8, bottom: innerHeight - panel.top + 8 };
+}
+function applyInsets() {
+  const { right, bottom, top } = viewInsets();
+  if (right || bottom || top) camera.setViewOffset(innerWidth, innerHeight, right / 2, (bottom - top) / 2, innerWidth, innerHeight);
+  else camera.clearViewOffset();
 }
 
 function placeSheet() {
@@ -1457,57 +1604,53 @@ function placeSheet() {
   sheetEl.style.setProperty('--sheet-bottom', `${Math.round(bottom)}px`);
 }
 function renderInterfaces() {
-  if (view !== 'interfaces') return;
+  if (view !== 'interfaces') { buildFaceSheets(null); applyInsets(); return; }
   placeSheet();
   const slot = slotList.find((x) => x.key === selected);
-  const b = slot && slot.id && blocks[slot.id];
+  const g = slot && slot.id && blocks[slot.id];
   const when = historyAt === null ? '' : ` at ${clock(historyAt)}`;
-  const head = `<header><div><h2>${slot ? slot.name : ''} · interfaces${when}</h2>
-    <p class="note">The faces where ${slot ? slot.name : 'this group'}'s cube touches another cube, drawn flat as seen from the neighbour.
-    Colour is the surface lying in the shared plane, dark lines its edges, grey lines edges further back.
-    The neighbour's face is mirrored so both drawings line up: overlaid, mixed colour is where the two faces meet.</p></div>
-    <button class="print" type="button">Print</button></header>`;
-  let body = '';
-  if (!b) {
-    body = `<p class="empty">${slot ? slot.name : 'This group'} hasn't published ${historyAt === null ? 'yet' : 'by then'}.</p>`;
-  } else {
-    const list = contacts(slot.id);
-    if (!list.length) body = `<p class="empty">No other cube touches ${slot.name}${historyAt === null ? ' yet' : ' at that time'}. A face counts once another group's cube sits against it.</p>`;
-    for (const c of list) {
-      const h = blocks[c.hid];
-      const sign = c.side ? 1 : -1;
-      const forward = new THREE.Vector3().setComponent(c.a, -sign);            // looking at the face from the neighbour
-      const up = c.a === 2 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(0, 0, 1);
-      const right = new THREE.Vector3().crossVectors(forward, up);
-      const tol = Math.max(nominal * 0.005, Math.abs(c.gap) / 2 + nominal * 0.003);
-      const mine = flatten(b, c.a, c.plane, tol, right, up);
-      const theirs = flatten(h, c.a, c.plane, tol, right, up);
-      const rectG = faceRect(b.box, right, up), rectH = faceRect(h.box, right, up);
-      const pad = Math.max(rectG[2] - rectG[0], rectG[3] - rectG[1]) * 0.08;
-      const frame = [Math.min(rectG[0], rectH[0]) - pad, Math.min(rectG[1], rectH[1]) - pad,
-        Math.max(rectG[2], rectH[2]) + pad, Math.max(rectG[3], rectH[3]) + pad];
-      const hSlot = slotList.find((x) => x.id === c.hid);
-      const nameG = slot.name, nameH = hSlot ? hSlot.name : c.hid;
-      const colG = chipColor(slot), colH = hSlot ? chipColor(hSlot) : groupColor(c.hid);
-      const myFace = SIDE_NAMES[c.a][c.side], theirFace = SIDE_NAMES[c.a][1 - c.side];
-      const gapNote = Math.abs(c.gap) > nominal * 0.002 ? ` · ${c.gap > 0 ? 'gap' : 'overlap'} ${fmtLen(Math.abs(c.gap))}` : '';
-      const size = `${fmtLen(rectG[2] - rectG[0])} × ${fmtLen(rectG[3] - rectG[1])}`;
-      body += `<div class="iface">
-        <h3>${c.a === 2 ? (c.side ? 'Top' : 'Bottom') : myFace[0].toUpperCase() + myFace.slice(1)} face, against ${nameH}
-          <small>· plane ${AXIS[c.a]} = ${fmtLen(c.plane)}${gapNote}</small></h3>
-        <div class="drawings">
-          <figure>${svgDrawing(frame, [{ rect: rectG }, { fills: mine.fills, color: colG, opacity: 0.9 }, { edges: mine.edges, back: true }], `${nameG}, ${myFace} face`)}
-            <figcaption><span class="swatch" style="--c:${colG}"></span><b>${nameG}</b> <span>${myFace} face, ${size} · touching ${fmtArea(mine.area)}</span></figcaption></figure>
-          <figure>${svgDrawing(frame, [{ rect: rectH }, { fills: theirs.fills, color: colH, opacity: 0.9 }, { edges: theirs.edges, back: true }], `${nameH}, ${theirFace} face`)}
-            <figcaption><span class="swatch" style="--c:${colH}"></span><b>${nameH}</b> <span>${theirFace} face, mirrored to line up · touching ${fmtArea(theirs.area)}</span></figcaption></figure>
-          <figure>${svgDrawing(frame, [{ rect: rectG }, { fills: mine.fills, color: colG, opacity: 0.6 }, { fills: theirs.fills, color: colH, opacity: 0.6 },
-            { edges: mine.edges }, { edges: theirs.edges, ink: '#5b6470' }], `${nameG} and ${nameH} overlaid`)}
-            <figcaption><b>Both overlaid</b> <span>mixed colour = the faces meet; one colour only = that face has nothing to touch there</span></figcaption></figure>
-        </div></div>`;
-    }
+  let html = `<header><h2>${esc(slot ? slot.name : '')} · interfaces${when}</h2><button class="print" type="button">Print</button></header>`;
+  const list = g ? contacts(slot.id) : [];
+  if (!g) {
+    html += `<p class="empty">${esc(slot ? slot.name : 'This group')} hasn't published ${historyAt === null ? 'yet' : 'by then'}.</p>`;
+  } else if (!list.length) {
+    html += `<p class="empty">No other cube touches ${esc(slot.name)}${historyAt === null ? ' yet' : ' at that time'}. A face counts once another group's cube sits against it.</p>`;
   }
-  sheetEl.innerHTML = head + body;
+  if (faceSel >= list.length) faceSel = 0;
+  const drawings = list.map((c) => interfaceDrawing(slot.id, c));
+  buildFaceSheets(g ? slot.id : null, list, drawings);
+  if (list.length) {
+    const nameOf = (id) => slotList.find((x) => x.id === id)?.name || id;
+    html += `<p class="note">Click a face in the 3D view, or pick one here.</p>
+      <div class="faces" role="tablist" aria-label="Faces">${list.map((c, i) => {
+        const d = drawings[i];
+        return `<button type="button" role="tab" data-face="${i}" aria-selected="${i === faceSel}"><span class="key" style="--c:${esc(d.colH)}"></span>
+          <b>${faceTitle(c)} · ${esc(nameOf(c.hid))}</b><small>${pct(d.touch, d.face)} touch · ${pct(d.open, d.face)} voids</small></button>`;
+      }).join('')}</div>`;
+    const c = list[faceSel], d = drawings[faceSel];
+    const nameG = slot.name, nameH = nameOf(c.hid);
+    const voidG = d.open + d.hOnly, voidH = d.open + d.gOnly;
+    html += `<h3>${faceTitle(c)} face of ${esc(nameG)} ↔ ${SIDE_NAMES[c.a][1 - c.side]} face of ${esc(nameH)}</h3>
+      <div class="detail">
+        <figure class="drawing"><figcaption>Seen from ${esc(nameH)} · ${fmtLen(d.w)} × ${fmtLen(d.h)} · solid line ${esc(nameG)}, dashed ${esc(nameH)}</figcaption></figure>
+        <div class="big"><div><b>${fmtM2(d.touch)}</b><span><i class="key touch"></i>${pct(d.touch, d.face)} · solid surface touching</span></div>
+          <div><b>${fmtM2(d.open)}</b><span><i class="key open"></i>${pct(d.open, d.face)} · voids connect</span></div></div>
+      </div>
+      <table>
+        <tr><td><i class="key touch"></i>Touching: both solid</td><td>${fmtM2(d.touch)}</td><td>${pct(d.touch, d.face)}</td></tr>
+        <tr><td><i class="key open"></i>Voids connect: both open</td><td>${fmtM2(d.open)}</td><td>${pct(d.open, d.face)}</td></tr>
+        <tr><td><i class="key" style="--c:${esc(d.colG)}"></i>${esc(nameG)} solid, ${esc(nameH)} open</td><td>${fmtM2(d.gOnly)}</td><td>${pct(d.gOnly, d.face)}</td></tr>
+        <tr><td><i class="key" style="--c:${esc(d.colH)}"></i>${esc(nameG)} open, ${esc(nameH)} solid</td><td>${fmtM2(d.hOnly)}</td><td>${pct(d.hOnly, d.face)}</td></tr>
+        <tr class="total"><td>Shared face</td><td>${fmtM2(d.face)}</td><td>100%</td></tr>
+      </table>
+      <p class="note">${esc(nameG)}'s voids on this face: ${fmtM2(voidG)} (${pct(voidG, d.face)} of it), of which ${pct(d.open, voidG)} open into ${esc(nameH)}'s voids.
+        ${esc(nameH)}'s voids: ${fmtM2(voidH)} (${pct(voidH, d.face)}), of which ${pct(d.open, voidH)} open into ${esc(nameG)}'s.</p>`;
+  }
+  sheetEl.innerHTML = html;
+  if (list.length) sheetEl.querySelector('.drawing').prepend(drawings[faceSel].canvas);
   sheetEl.querySelector('.print').onclick = () => print();
+  sheetEl.querySelectorAll('[data-face]').forEach((b) => { b.onclick = () => { faceSel = Number(b.dataset.face); renderInterfaces(); }; });
+  applyInsets();
 }
 addEventListener('resize', () => renderInterfaces());
 

@@ -6,7 +6,7 @@ Each group designs one piece (a cube) in Rhino and presses **Publish**. The clas
 - **Exploded**: the same, with every piece pushed away from the centre; a slider sets the separation
 - **One by one**: one group's piece on its own; step through the groups with ‹ › or the arrow keys
 - **Matrix**: every group's piece side by side in a grid, with empty spots for groups that haven't published
-- **Interfaces**: 2D drawings of the faces where a group's cube touches another cube (three each in a 2×2×2 cube), next to the neighbour's matching face and both overlaid, ready to print
+- **Interfaces**: a group's cube with the cubes it touches, pulled apart, with each shared face drawn in the gap; click a face to see in 2D where the cubes touch and where their voids connect, with the areas
 
 Every publish is kept, so the **history bar** can step back through the session, version by version, or replay it. **Sun** (S) lights the model with the real sun for any date and time in Tainan, with long shadows, the sun's path and a compass. **Animals** (A) brings the structure to life with chibi Taiwanese wildlife.
 
@@ -101,7 +101,13 @@ The address keeps the current view, so you can bookmark one: `…/#matrix`, `…
 
 **Animals.** Eight little residents: Formosan black bears, leopard cats (石虎), a Formosan rock macaque, a pangolin and Taiwan blue magpies. They find places to stand on the cubes (tops, and cave floors with enough headroom), hop between them, fly and perch (the magpies), turn round to look at you, and now and then say something. They ride along when the cubes move between views and move house when a cube is covered, hidden or replaced by a new version. Click one and it jumps and tells you its name. `?animals=1` starts with them on.
 
-**Interfaces.** For the selected group, one row per face that touches another group's cube: that face (as seen from the neighbour), the neighbour's face (mirrored so the two line up) and both overlaid. Colour is the surface lying in the shared plane, dark lines are its edges, grey lines are edges further back. In the overlay, mixed colour is where the two faces meet, and a single colour is where only one of them has material. Faces count as touching when the cubes' bounding boxes sit within 3% of a cube's size of each other. **Print** prints just the drawings.
+**Interfaces.** The 3D view shows the selected group's cube and the cubes it touches (three each in a 2×2×2 cube), pulled apart. In each gap floats a drawing of the shared face, so you can see at a glance where voids run on into the neighbour. Click a face (in 3D, or its tab in the panel; clicking a neighbouring cube moves the focus to it) to open it in the panel. The drawing is the face as seen from the neighbour, with four kinds of area:
+
+- **grey**: both cubes solid, so the surfaces touch;
+- **red hatch**: both open, so **the voids connect**;
+- **one group's colour**: only that cube has material there and the other is open.
+
+A solid line shows this cube's edges in the plane, a dashed line the neighbour's. Next to it are the areas in m² and as a share of the shared face: solid surface touching, voids connecting, each one-sided area, and how much of each cube's voids on that face open into the other's. Areas are counted on a fine raster (about 0.6 mm per pixel on a 0.45 m face). Faces count as touching when the cubes' bounding boxes sit within 3% of a cube's size of each other. **Print** prints the selected face's drawing and numbers.
 
 URL options: `?title=Studio%20Rotterdam` sets the heading, `?poll=5` the refresh interval in seconds, `?groups=8` the number of groups, `?explode=1` the starting separation (1 = each piece moves its own distance from the centre again; 0–3), `?view=matrix` the starting view, `?colors=model` (or `white`) the starting colours, `?rock=1` starts in stone. Sun: `?sun=1` starts with the sun on, `?day=172&time=15:00` (day of the year, 1–365) the moment, `?lat=…&lon=…&tz=…&place=…` another location, `?north=30` if north in the Rhino model is turned 30° anticlockwise from +Y.
 

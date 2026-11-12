@@ -41,19 +41,6 @@ Rhino (optional)    ◀───────────  /api/state  (WorkshopS
    SERVER_URL = "https://your-project.vercel.app"
    WORKSHOP_KEY = "blocks-2026"      # publish script only
    ```
-   In `WorkshopPublish.py`, also describe where the cubes are in your template (in metres), because the script only publishes what lies inside the group's own cube:
-   ```python
-   CUBE_SIZE_M = 0.45
-   CUBE_ORIGIN_M = (0.9, 0.0, 0.0)   # south-west bottom corner of the whole 2 x 2 x 2 cube (Group 1 starts at x 900, y 0, z 0 mm)
-   GROUP_CELLS = {1: (0, 0, 0), 2: (1, 0, 0), 3: (1, 1, 0), 4: (0, 1, 0),
-                  5: (0, 0, 1), 6: (1, 0, 1), 7: (1, 1, 1), 8: (0, 1, 1)}
-   ```
-   Each cell is (x, y, z), with 0 = west / south / bottom and 1 = east / north / top. This is the workshop's order: 1–4 anticlockwise round the bottom floor from the south-west corner, and 5–8 the same on the top floor (north up):
-   ```
-   top floor   8 7      bottom floor   4 3
-               5 6                     1 2
-   ```
-   Each group touches the groups on either side of it on its floor (1–2–3–4–1 and 5–6–7–8–5) and the one directly above or below it (*n* ± 4). `ONLY_INSIDE_CUBE = False` turns the filter off.
 
 ## Before the workshop
 
@@ -71,11 +58,10 @@ Rhino (optional)    ◀───────────  /api/state  (WorkshopS
    ! _-RunPythonScript "C:\Users\you\Documents\WorkshopPublish.py"
    ```
    On Mac: `! _-RunPythonScript "/Users/you/Documents/WorkshopPublish.py"`
-3. Click it. The first time it asks which group you are (it remembers this in the Rhino file). After that, **Enter publishes**. Click **Group** on the command line to change the number.
-4. Optional: click **PublishOnSave** on the command line to turn it **On**. Every Ctrl+S then publishes automatically. After restarting Rhino, click the button once to re-arm it.
-5. Optional: click **ShowCube** to turn it **On**. Your group's cube is drawn in red in every viewport: only what's inside it is published. Like PublishOnSave, it's remembered in the file; after restarting Rhino, run the script once to bring it back.
+3. Click it. The first time it asks which group you are (it remembers this in the Rhino file). Then **select your cube**: one object, and only that object is published. Next time, **Enter** publishes the same object again. Click **Group** on the command line to change the number.
+4. Optional: click **PublishOnSave** on the command line to turn it **On**. Every Ctrl+S then publishes the object you published last. After restarting Rhino, click the button once to re-arm it.
 
-What gets published: every visible object that lies **completely inside your group's cube** (3 cm leeway). Anything else (hidden objects, hidden layers, sketches next to the cube, a neighbour's reference geometry, stray objects far away) is left out. The command line says how many objects were left out, and after a manual publish they're selected so you can see them. If nothing is inside your cube, the script says where it expects the cube: check the group number and that your model sits where it is in the template. Blocks over 4 MB are refused with a message saying so.
+What gets published: **only the one object you select**, so whatever else is in your file stays out. Your cube therefore has to be one object: join its parts into one polysurface or mesh (Join or BooleanUnion), or make a block of them. Surfaces, polysurfaces, extrusions, SubDs, meshes and blocks work; curves, points and text don't. Locked objects can't be selected, so unlock your cube first. Cubes over 4 MB are refused with a message saying so.
 
 ## On the screen
 

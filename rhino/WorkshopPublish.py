@@ -51,7 +51,7 @@ GROUP_CELLS = {
     5: (0, 0, 1), 6: (1, 0, 1), 7: (1, 1, 1), 8: (0, 1, 1),
 }
 ONLY_INSIDE_CUBE = True           # False publishes everything visible, as before
-INSIDE_TOLERANCE_M = 0.001        # how far something may poke out and still count as inside
+INSIDE_TOLERANCE_M = 0.03         # how far something may poke out (3 cm) and still count as inside
 # ---------------------------------------------------------------------------
 
 GROUPS = 8          # number of groups; keep it the same as ?groups= on the class screen

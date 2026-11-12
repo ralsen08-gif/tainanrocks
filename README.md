@@ -75,7 +75,7 @@ Rhino (optional)    ◀───────────  /api/state  (WorkshopS
 4. Optional: click **PublishOnSave** on the command line to turn it **On**. Every Ctrl+S then publishes automatically. After restarting Rhino, click the button once to re-arm it.
 5. Optional: click **ShowCube** to turn it **On**. Your group's cube is drawn in red in every viewport: only what's inside it is published. Like PublishOnSave, it's remembered in the file; after restarting Rhino, run the script once to bring it back.
 
-What gets published: every visible object that lies **completely inside your group's cube** (1 mm leeway). Anything else (hidden objects, hidden layers, sketches next to the cube, a neighbour's reference geometry, stray objects far away) is left out. The command line says how many objects were left out, and after a manual publish they're selected so you can see them. If nothing is inside your cube, the script says where it expects the cube: check the group number and that your model sits where it is in the template. Blocks over 4 MB are refused with a message saying so.
+What gets published: every visible object that lies **completely inside your group's cube** (3 cm leeway). Anything else (hidden objects, hidden layers, sketches next to the cube, a neighbour's reference geometry, stray objects far away) is left out. The command line says how many objects were left out, and after a manual publish they're selected so you can see them. If nothing is inside your cube, the script says where it expects the cube: check the group number and that your model sits where it is in the template. Blocks over 4 MB are refused with a message saying so.
 
 ## On the screen
 

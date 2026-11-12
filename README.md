@@ -41,6 +41,19 @@ Rhino (optional)    ◀───────────  /api/state  (WorkshopS
    SERVER_URL = "https://your-project.vercel.app"
    WORKSHOP_KEY = "blocks-2026"      # publish script only
    ```
+   In `WorkshopPublish.py`, also describe where the cubes are in your template (in metres), because the script only publishes what lies inside the group's own cube:
+   ```python
+   CUBE_SIZE_M = 0.45
+   CUBE_ORIGIN_M = (0.0, 0.0, 0.0)   # south-west bottom corner of the whole 2 x 2 x 2 cube
+   GROUP_CELLS = {1: (0, 0, 0), 2: (1, 0, 0), 3: (1, 1, 0), 4: (0, 1, 0),
+                  5: (0, 1, 1), 6: (1, 1, 1), 7: (1, 0, 1), 8: (0, 0, 1)}
+   ```
+   Each cell is (x, y, z), with 0 = west / south / bottom and 1 = east / north / top. The default numbers the cubes as one loop, so each group touches the next and 8 touches 1 again (north up):
+   ```
+   top floor   5 6      bottom floor   4 3
+               8 7                     1 2
+   ```
+   Group *n* then touches groups *n* − 1, *n* + 1 (8 and 1 wrap round) and 9 − *n* (the one above or below). Change the table if your template numbers them differently. `ONLY_INSIDE_CUBE = False` turns the filter off.
 
 ## Before the workshop
 
@@ -61,7 +74,7 @@ Rhino (optional)    ◀───────────  /api/state  (WorkshopS
 3. Click it. The first time it asks which group you are (it remembers this in the Rhino file). After that, **Enter publishes**. Click **Group** on the command line to change the number.
 4. Optional: click **PublishOnSave** on the command line to turn it **On**. Every Ctrl+S then publishes automatically. After restarting Rhino, click the button once to re-arm it.
 
-What gets published: everything visible. Hidden objects and hidden layers are skipped, so hide anything that shouldn't be on the big screen. Blocks over 4 MB are refused with a message saying so.
+What gets published: every visible object that lies **completely inside your group's cube** (1 mm leeway). Anything else (hidden objects, hidden layers, sketches next to the cube, a neighbour's reference geometry, stray objects far away) is left out. The command line says how many objects were left out, and after a manual publish they're selected so you can see them. If nothing is inside your cube, the script says where it expects the cube: check the group number and that your model sits where it is in the template. Blocks over 4 MB are refused with a message saying so.
 
 ## On the screen
 

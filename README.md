@@ -46,14 +46,14 @@ Rhino (optional)    ◀───────────  /api/state  (WorkshopS
    CUBE_SIZE_M = 0.45
    CUBE_ORIGIN_M = (0.0, 0.0, 0.0)   # south-west bottom corner of the whole 2 x 2 x 2 cube
    GROUP_CELLS = {1: (0, 0, 0), 2: (1, 0, 0), 3: (1, 1, 0), 4: (0, 1, 0),
-                  5: (0, 1, 1), 6: (1, 1, 1), 7: (1, 0, 1), 8: (0, 0, 1)}
+                  5: (0, 0, 1), 6: (1, 0, 1), 7: (1, 1, 1), 8: (0, 1, 1)}
    ```
-   Each cell is (x, y, z), with 0 = west / south / bottom and 1 = east / north / top. The default numbers the cubes as one loop, so each group touches the next and 8 touches 1 again (north up):
+   Each cell is (x, y, z), with 0 = west / south / bottom and 1 = east / north / top. This is the workshop's order: 1–4 anticlockwise round the bottom floor from the south-west corner, and 5–8 the same on the top floor (north up):
    ```
-   top floor   5 6      bottom floor   4 3
-               8 7                     1 2
+   top floor   8 7      bottom floor   4 3
+               5 6                     1 2
    ```
-   Group *n* then touches groups *n* − 1, *n* + 1 (8 and 1 wrap round) and 9 − *n* (the one above or below). Change the table if your template numbers them differently. `ONLY_INSIDE_CUBE = False` turns the filter off.
+   Each group touches the groups on either side of it on its floor (1–2–3–4–1 and 5–6–7–8–5) and the one directly above or below it (*n* ± 4). `ONLY_INSIDE_CUBE = False` turns the filter off.
 
 ## Before the workshop
 

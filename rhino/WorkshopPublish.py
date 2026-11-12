@@ -40,12 +40,13 @@ WORKSHOP_KEY = "blocks-2026"
 CUBE_SIZE_M = 0.45
 CUBE_ORIGIN_M = (0.0, 0.0, 0.0)   # south-west bottom corner of the whole 2 x 2 x 2 cube
 # The cell each group fills: (x, y, z), 0 = west / south / bottom, 1 = east / north / top.
-# Default: one loop in which every group touches the next, and 8 touches 1 again.
-#     top floor     5 6        bottom floor     4 3      (north up)
-#                   8 7                         1 2
+# The workshop's order: 1-4 anticlockwise round the bottom floor from the south-west corner,
+# 5-8 the same on the top floor, so each group sits directly above the one 4 lower.
+#     top floor     8 7        bottom floor     4 3      (north up)
+#                   5 6                         1 2
 GROUP_CELLS = {
     1: (0, 0, 0), 2: (1, 0, 0), 3: (1, 1, 0), 4: (0, 1, 0),
-    5: (0, 1, 1), 6: (1, 1, 1), 7: (1, 0, 1), 8: (0, 0, 1),
+    5: (0, 0, 1), 6: (1, 0, 1), 7: (1, 1, 1), 8: (0, 1, 1),
 }
 ONLY_INSIDE_CUBE = True           # False publishes everything visible, as before
 INSIDE_TOLERANCE_M = 0.001        # how far something may poke out and still count as inside

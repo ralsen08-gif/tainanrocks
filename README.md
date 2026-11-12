@@ -41,19 +41,6 @@ Rhino (optional)    ◀───────────  /api/state  (WorkshopS
    SERVER_URL = "https://your-project.vercel.app"
    WORKSHOP_KEY = "blocks-2026"      # publish script only
    ```
-   In `WorkshopPublish.py`, also describe where the cubes are in your template (in metres), because the script only publishes what lies inside the group's own cube:
-   ```python
-   CUBE_SIZE_M = 0.45
-   CUBE_ORIGIN_M = (0.0, 0.0, 0.0)   # south-west bottom corner of the whole 2 x 2 x 2 cube
-   GROUP_CELLS = {1: (0, 0, 0), 2: (1, 0, 0), 3: (1, 1, 0), 4: (0, 1, 0),
-                  5: (0, 0, 1), 6: (1, 0, 1), 7: (1, 1, 1), 8: (0, 1, 1)}
-   ```
-   Each cell is (x, y, z), with 0 = west / south / bottom and 1 = east / north / top. This is the workshop's order: 1–4 anticlockwise round the bottom floor from the south-west corner, and 5–8 the same on the top floor (north up):
-   ```
-   top floor   8 7      bottom floor   4 3
-               5 6                     1 2
-   ```
-   Each group touches the groups on either side of it on its floor (1–2–3–4–1 and 5–6–7–8–5) and the one directly above or below it (*n* ± 4). `ONLY_INSIDE_CUBE = False` turns the filter off.
 
 ## Before the workshop
 
@@ -71,11 +58,10 @@ Rhino (optional)    ◀───────────  /api/state  (WorkshopS
    ! _-RunPythonScript "C:\Users\you\Documents\WorkshopPublish.py"
    ```
    On Mac: `! _-RunPythonScript "/Users/you/Documents/WorkshopPublish.py"`
-3. Click it. The first time it asks which group you are (it remembers this in the Rhino file). After that, **Enter publishes**. Click **Group** on the command line to change the number.
-4. Optional: click **PublishOnSave** on the command line to turn it **On**. Every Ctrl+S then publishes automatically. After restarting Rhino, click the button once to re-arm it.
-5. Optional: click **ShowCube** to turn it **On**. Your group's cube is drawn in red in every viewport: only what's inside it is published. Like PublishOnSave, it's remembered in the file; after restarting Rhino, run the script once to bring it back.
+3. Click it. The first time it asks which group you are (it remembers this in the Rhino file). Then **select your cube**: one object, and only that object is published. Next time, **Enter** publishes the same object again. Click **Group** on the command line to change the number.
+4. Optional: click **PublishOnSave** on the command line to turn it **On**. Every Ctrl+S then publishes the object you published last. After restarting Rhino, click the button once to re-arm it.
 
-What gets published: every visible object that lies **completely inside your group's cube** (1 mm leeway). Anything else (hidden objects, hidden layers, sketches next to the cube, a neighbour's reference geometry, stray objects far away) is left out. The command line says how many objects were left out, and after a manual publish they're selected so you can see them. If nothing is inside your cube, the script says where it expects the cube: check the group number and that your model sits where it is in the template. Blocks over 4 MB are refused with a message saying so.
+What gets published: **only the one object you select**, so whatever else is in your file stays out. Your cube therefore has to be one object: join its parts into one polysurface or mesh (Join or BooleanUnion), or make a block of them. Surfaces, polysurfaces, extrusions, SubDs, meshes and blocks work; curves, points and text don't. Locked objects can't be selected, so unlock your cube first. Cubes over 4 MB are refused with a message saying so.
 
 ## On the screen
 
@@ -97,6 +83,7 @@ Open your Vercel URL and press **P** (or the Fullscreen button) for fullscreen w
 | **F** | Fit the view |
 | **P** | Fullscreen with only the model (Esc to come back) |
 | **H** | Show or hide the history bar |
+| **M** | Manage the timeline: hide or delete published versions |
 | **U** | Update: load the newest models now (see below) |
 
 **Click a cube** for its card: size, volume, void (share of its bounding box left empty), estimated weight in concrete (2.4 t/m³), surface area, which cubes it touches and over how much area, triangle count and file size, plus buttons for One by one and Interfaces. The card also **downloads the published .3dm files**: this version, all versions of the group (zip), or every group as shown (zip; when you're looking back in the history, the versions of that moment). These are the files the Publish button sent, so meshes in metres, not the students' working files. Volume needs a closed model; otherwise the card says so. Clicking empty space or **Esc** closes it.
@@ -128,6 +115,17 @@ URL options: `?title=Studio%20Rotterdam` sets the heading, `?poll=5` the refresh
 ## Optional: blocks inside your own Rhino
 
 Run `WorkshopSync.py` on the presentation laptop. Each group arrives on its own layer `Workshop Live::3` and is replaced whenever that group publishes. Run it again to stop. Don't model on those layers.
+
+## Managing the timeline
+
+**Manage** (M) lists every group with all its published versions, newest first. It asks for the workshop passcode (`WORKSHOP_KEY`) the first time, and remembers it until the browser tab is closed.
+
+- **Hide** takes a version off the screen and out of the history, but keeps the file; **Unhide** brings it back. Under the hood the file is renamed to `….hidden.3dm`, so nothing else needs to remember what's hidden.
+- **Hide all** hides a whole group (its chip goes empty); a new publish from that group shows up again as usual.
+- **Delete** removes a version for good, **Delete group** a group with all its versions; both ask first.
+- **Show on screen** jumps the history to that version.
+
+Each action costs a few advanced Blob operations (a listing, the change and the rebuilt list).
 
 ## Clearing between workshops
 

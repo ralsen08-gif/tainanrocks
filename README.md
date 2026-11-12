@@ -44,7 +44,7 @@ Rhino (optional)    ◀───────────  /api/state  (WorkshopS
    In `WorkshopPublish.py`, also describe where the cubes are in your template (in metres), because the script only publishes what lies inside the group's own cube:
    ```python
    CUBE_SIZE_M = 0.45
-   CUBE_ORIGIN_M = (0.0, 0.0, 0.0)   # south-west bottom corner of the whole 2 x 2 x 2 cube
+   CUBE_ORIGIN_M = (0.9, 0.0, 0.0)   # south-west bottom corner of the whole 2 x 2 x 2 cube (Group 1 starts at x 900, y 0, z 0 mm)
    GROUP_CELLS = {1: (0, 0, 0), 2: (1, 0, 0), 3: (1, 1, 0), 4: (0, 1, 0),
                   5: (0, 0, 1), 6: (1, 0, 1), 7: (1, 1, 1), 8: (0, 1, 1)}
    ```

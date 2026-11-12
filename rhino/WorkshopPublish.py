@@ -40,7 +40,7 @@ WORKSHOP_KEY = "blocks-2026"
 # Where the groups' cubes are in the template file, in metres. Only objects that lie
 # completely inside the group's own cube are published.
 CUBE_SIZE_M = 0.45
-CUBE_ORIGIN_M = (0.0, 0.0, 0.0)   # south-west bottom corner of the whole 2 x 2 x 2 cube
+CUBE_ORIGIN_M = (0.9, 0.0, 0.0)   # south-west bottom corner of the whole 2 x 2 x 2 cube (= where Group 1 starts: x 900, y 0, z 0 mm)
 # The cell each group fills: (x, y, z), 0 = west / south / bottom, 1 = east / north / top.
 # The workshop's order: 1-4 anticlockwise round the bottom floor from the south-west corner,
 # 5-8 the same on the top floor, so each group sits directly above the one 4 lower.

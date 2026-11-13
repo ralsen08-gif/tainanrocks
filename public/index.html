@@ -578,7 +578,12 @@ async function buildGroup(id, url) {
     const mat = new THREE.MeshStandardMaterial({ color: surfaceColor(id, modelColor), roughness: 0.92, metalness: 0,
       side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
     mat.clippingPlanes = cutPlanes;
-    rockify(mat, scale);
+    // the rock pattern is measured from a nearby origin (a whole number of pattern repeats), so models
+    // far from 0,0,0 keep their grain sharp instead of losing it to floating-point rounding
+    g.computeBoundingBox();
+    const near = g.boundingBox.getCenter(new THREE.Vector3()), repeat = ROCK_TILE_M / scale;
+    near.set(Math.round(near.x / repeat) * repeat, Math.round(near.y / repeat) * repeat, Math.round(near.z / repeat) * repeat);
+    rockify(mat, scale, near);
     const mesh = new THREE.Mesh(g, mat);
     mesh.castShadow = mesh.receiveShadow = true;
     mesh.userData.modelColor = modelColor;
@@ -2101,7 +2106,7 @@ const rockUniforms = {
 };
 rockUniforms.rockMap.value.needsUpdate = true;
 let rockTextureMade = false;
-function rockify(mat, metresPerUnit) {
+function rockify(mat, metresPerUnit, origin = new THREE.Vector3()) {
   mat.onBeforeCompile = (shader) => {
     shader.uniforms.rockMap = rockUniforms.rockMap;
     shader.uniforms.rockOn = rockUniforms.rockOn;
@@ -2109,9 +2114,10 @@ function rockify(mat, metresPerUnit) {
     shader.uniforms.sectionOn = sectionUniform;
     shader.uniforms.rockScale = { value: metresPerUnit / ROCK_TILE_M };
     shader.uniforms.rockMetres = { value: metresPerUnit };
+    shader.uniforms.rockOrigin = { value: origin };
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nvarying vec3 vRockPos;\nvarying vec3 vRockNormal;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvRockPos = position;\nvRockNormal = normal;');
+      .replace('#include <common>', '#include <common>\nuniform vec3 rockOrigin;\nvarying vec3 vRockPos;\nvarying vec3 vRockNormal;\nvarying float vRockZ;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvRockPos = position - rockOrigin;\nvRockNormal = normal;\nvRockZ = position.z;');
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', `#include <common>
         uniform sampler2D rockMap;
@@ -2122,6 +2128,7 @@ function rockify(mat, metresPerUnit) {
         uniform float sectionOn;
         varying vec3 vRockPos;
         varying vec3 vRockNormal;
+        varying float vRockZ;
         // bump mapping from screen-space derivatives of a height in metres (Mikkelsen's method, with
         // unnormalised derivatives so the relief has a real depth whatever the zoom)
         vec3 rockPerturb(vec3 surfPos, vec3 surfNorm, vec2 dHdxy, float faceDir) {
@@ -2141,7 +2148,7 @@ function rockify(mat, metresPerUnit) {
           diffuseColor.rgb *= stone.rgb;
           rockH = stone.a;
           // horizontal print layers, every 6 mm, on the sides only, faded where they'd be finer than a pixel
-          float layer = vRockPos.z * rockMetres / 0.006;
+          float layer = vRockZ * rockMetres / 0.006;   // absolute height, so layers line up across parts
           rockH += 0.1 * (1.0 - w.z) * clamp(1.0 - fwidth(layer) * 1.5, 0.0, 1.0) * sin(6.2832 * layer);
         }
         // where a section plane cuts a cube we look at its inside faces: draw them as dark poché

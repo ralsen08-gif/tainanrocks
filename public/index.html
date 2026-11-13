@@ -456,7 +456,7 @@ let slotList = [];           // [{ key, id, short, name }]
 // ---------- 3D scene (Rhino is Z-up)
 THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
 const viewEl = document.getElementById('view');
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+const renderer = new THREE.WebGLRenderer({ antialias: true, stencil: true });   // stencil: section caps
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.localClippingEnabled = true;
@@ -511,7 +511,7 @@ const MODES = ['groups', 'model', 'white'];
 const MODE_NAMES = { model: 'Model colors', groups: 'Group colors', white: 'White model' };
 let mode = MODES.includes(params.get('colors')) ? params.get('colors') : 'groups';
 let rockOn = params.get('rock') === '1';
-const STONE = new THREE.Color('#b8ad9c');
+const STONE = new THREE.Color('#aa9e99');   // printed-sand grey with a hint of pink
 function colorFor(id, modelColor) {
   if (mode === 'white') return WHITE;
   if (mode === 'model' && modelColor) return modelColor;
@@ -578,7 +578,12 @@ async function buildGroup(id, url) {
     const mat = new THREE.MeshStandardMaterial({ color: surfaceColor(id, modelColor), roughness: 0.92, metalness: 0,
       side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
     mat.clippingPlanes = cutPlanes;
-    rockify(mat, scale);
+    // the rock pattern is measured from a nearby origin (a whole number of pattern repeats), so models
+    // far from 0,0,0 keep their grain sharp instead of losing it to floating-point rounding
+    g.computeBoundingBox();
+    const near = g.boundingBox.getCenter(new THREE.Vector3()), repeat = ROCK_TILE_M / scale;
+    near.set(Math.round(near.x / repeat) * repeat, Math.round(near.y / repeat) * repeat, Math.round(near.z / repeat) * repeat);
+    rockify(mat, scale, near);
     const mesh = new THREE.Mesh(g, mat);
     mesh.castShadow = mesh.receiveShadow = true;
     mesh.userData.modelColor = modelColor;
@@ -2087,83 +2092,149 @@ function setAnimals(on) {
 btnAnimals.onclick = () => setAnimals(!animalsOn);
 setAnimals(animalsOn);
 
-// ---------- rock (T): a stone texture generated here and projected onto the cubes from three sides
-// (Rhino meshes carry no texture coordinates). It is fixed to each model, so it moves with the cube.
-const ROCK_TILE_M = 0.35;   // one repeat of the pattern, in metres
-const rockUniforms = { rockMap: { value: new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1) }, rockOn: { value: 0 } };
+// ---------- rock (T): a coarse, sandy, 3D-printed-stone surface. The texture is generated here
+// (colour in RGB, height in alpha) and projected onto the cubes from three sides (Rhino meshes carry
+// no texture coordinates); the height bends the lighting (bump mapping), so the grains catch the
+// light. Fine print layers run horizontally on the sides. It's fixed to each model, so it moves with
+// the cube, and it fades to plain colour in the distance instead of shimmering.
+const ROCK_TILE_M = 0.16;     // one repeat of the pattern, in metres (grains ≈ 4 mm and 2 mm)
+const ROCK_RELIEF_M = 0.004;  // how deep the grains look, in metres
+const rockUniforms = {
+  rockMap: { value: new THREE.DataTexture(new Uint8Array([255, 255, 255, 128]), 1, 1) },
+  rockOn: { value: 0 },
+  rockRelief: { value: ROCK_RELIEF_M },
+};
 rockUniforms.rockMap.value.needsUpdate = true;
-function rockify(mat, metresPerUnit) {
+let rockTextureMade = false;
+function rockify(mat, metresPerUnit, origin = new THREE.Vector3()) {
   mat.onBeforeCompile = (shader) => {
     shader.uniforms.rockMap = rockUniforms.rockMap;
     shader.uniforms.rockOn = rockUniforms.rockOn;
+    shader.uniforms.rockRelief = rockUniforms.rockRelief;
     shader.uniforms.sectionOn = sectionUniform;
     shader.uniforms.rockScale = { value: metresPerUnit / ROCK_TILE_M };
+    shader.uniforms.rockMetres = { value: metresPerUnit };
+    shader.uniforms.rockOrigin = { value: origin };
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nvarying vec3 vRockPos;\nvarying vec3 vRockNormal;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvRockPos = position;\nvRockNormal = normal;');
+      .replace('#include <common>', '#include <common>\nuniform vec3 rockOrigin;\nvarying vec3 vRockPos;\nvarying vec3 vRockNormal;\nvarying float vRockZ;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvRockPos = position - rockOrigin;\nvRockNormal = normal;\nvRockZ = position.z;');
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform sampler2D rockMap;\nuniform float rockOn;\nuniform float rockScale;\nuniform float sectionOn;\nvarying vec3 vRockPos;\nvarying vec3 vRockNormal;')
+      .replace('#include <common>', `#include <common>
+        uniform sampler2D rockMap;
+        uniform float rockOn;
+        uniform float rockScale;
+        uniform float rockMetres;
+        uniform float rockRelief;
+        uniform float sectionOn;
+        varying vec3 vRockPos;
+        varying vec3 vRockNormal;
+        varying float vRockZ;
+        // bump mapping from screen-space derivatives of a height in metres (Mikkelsen's method, with
+        // unnormalised derivatives so the relief has a real depth whatever the zoom)
+        vec3 rockPerturb(vec3 surfPos, vec3 surfNorm, vec2 dHdxy, float faceDir) {
+          vec3 sx = dFdx(surfPos), sy = dFdy(surfPos);
+          vec3 r1 = cross(sy, surfNorm), r2 = cross(surfNorm, sx);
+          float det = dot(sx, r1) * faceDir;
+          vec3 grad = sign(det) * (dHdxy.x * r1 + dHdxy.y * r2);
+          return normalize(abs(det) * surfNorm - grad);
+        }`)
       .replace('#include <map_fragment>', `#include <map_fragment>
+        float rockH = 0.5;
         if (rockOn > 0.5) {
           vec3 w = pow(abs(normalize(vRockNormal)), vec3(6.0));
           w /= (w.x + w.y + w.z + 1e-5);
           vec3 p = vRockPos * rockScale;
-          vec3 stone = texture2D(rockMap, p.yz).rgb * w.x + texture2D(rockMap, p.xz + 0.37).rgb * w.y + texture2D(rockMap, p.xy + 0.71).rgb * w.z;
-          diffuseColor.rgb *= stone;
+          vec4 stone = texture2D(rockMap, p.yz) * w.x + texture2D(rockMap, p.xz + 0.37) * w.y + texture2D(rockMap, p.xy + 0.71) * w.z;
+          diffuseColor.rgb *= stone.rgb;
+          rockH = stone.a;
+          // horizontal print layers, every 6 mm, on the sides only, faded where they'd be finer than a pixel
+          float layer = vRockZ * rockMetres / 0.006;   // absolute height, so layers line up across parts
+          rockH += 0.1 * (1.0 - w.z) * clamp(1.0 - fwidth(layer) * 1.5, 0.0, 1.0) * sin(6.2832 * layer);
         }
-        // where a section plane cuts a cube we look at its inside faces: draw them as dark poché
-        if (sectionOn > 0.5 && !gl_FrontFacing) diffuseColor.rgb = vec3(0.16, 0.17, 0.19);`);
+`)
+      .replace('#include <dithering_fragment>', `#include <dithering_fragment>
+        // inside faces seen through a cut (only where a model isn't closed; elsewhere the section caps
+        // cover them): the same flat poché grey as the caps, without light or texture
+        if (sectionOn > 0.5 && !gl_FrontFacing) gl_FragColor = vec4(0.361, 0.380, 0.408, 1.0);`)
+      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+        if (rockOn > 0.5) normal = rockPerturb(-vViewPosition, normal, vec2(dFdx(rockH), dFdy(rockH)) * rockRelief, faceDirection);`);
   };
   mat.customProgramCacheKey = () => 'rock';
 }
-// Tileable stone: layered noise for the grain, a few darker veins, and speckles.
+// Tileable printed sand: rounded grains of two sizes with dark crevices between them (cellular noise),
+// on soft lumps a few centimetres across; every grain a slightly different tint, with dark and light specks.
 function makeRockTexture() {
-  const N = 512;
-  let seed = 20261110;
+  const N = 1024;
+  let seed = 20261113;
   const rand = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
-  const smooth = (t) => t * t * (3 - 2 * t);
-  const layer = (cells) => {
-    const g = Float32Array.from({ length: cells * cells }, rand);
-    const at = (i, j) => g[((j % cells) + cells) % cells * cells + ((i % cells) + cells) % cells];
-    return (x, y) => {
-      const fx = x * cells / N, fy = y * cells / N, x0 = Math.floor(fx), y0 = Math.floor(fy);
-      const tx = smooth(fx - x0), ty = smooth(fy - y0);
-      const top = at(x0, y0) + (at(x0 + 1, y0) - at(x0, y0)) * tx;
-      const bottom = at(x0, y0 + 1) + (at(x0 + 1, y0 + 1) - at(x0, y0 + 1)) * tx;
-      return top + (bottom - top) * ty;
+  const smoothstep = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+  // cellular (Worley) noise on a wrapping grid: distance to the nearest and second-nearest grain centre
+  const cells = (count) => {
+    const size = N / count;
+    const px = Float32Array.from({ length: count * count }, rand), py = Float32Array.from({ length: count * count }, rand);
+    const tint = Float32Array.from({ length: count * count }, rand);
+    return (x, y, out) => {
+      const cx = Math.floor(x / size), cy = Math.floor(y / size);
+      let f1 = 1e9, f2 = 1e9, id = 0;
+      for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) {
+        const gx = cx + i, gy = cy + j;
+        const k = (((gy % count) + count) % count) * count + (((gx % count) + count) % count);
+        const dx = (gx + px[k]) * size - x, dy = (gy + py[k]) * size - y;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        if (d < f1) { f2 = f1; f1 = d; id = k; } else if (d < f2) f2 = d;
+      }
+      out.f1 = f1 / size; out.f2 = f2 / size; out.tint = tint[id];
+      return out;
     };
   };
-  const grain = [[3, 0.46], [6, 0.27], [12, 0.13], [24, 0.07], [48, 0.04], [96, 0.025], [192, 0.015]].map(([c, a]) => [layer(c), a]);
-  const vein = [layer(3), layer(7)];
-  const canvas = document.createElement('canvas');
-  canvas.width = canvas.height = N;
-  const ctx = canvas.getContext('2d');
-  const img = ctx.createImageData(N, N);
+  const value = (count) => {   // smooth wrapping value noise
+    const g = Float32Array.from({ length: count * count }, rand);
+    const at = (i, j) => g[((j % count) + count) % count * count + ((i % count) + count) % count];
+    return (x, y) => {
+      const fx = x * count / N, fy = y * count / N, x0 = Math.floor(fx), y0 = Math.floor(fy);
+      const tx = smoothstep(0, 1, fx - x0), ty = smoothstep(0, 1, fy - y0);
+      const a = at(x0, y0) + (at(x0 + 1, y0) - at(x0, y0)) * tx, b = at(x0, y0 + 1) + (at(x0 + 1, y0 + 1) - at(x0, y0 + 1)) * tx;
+      return a + (b - a) * ty;
+    };
+  };
+  const big = cells(40), small = cells(88);
+  const lumps = [[value(4), 0.6], [value(8), 0.28], [value(16), 0.12]];
+  const A = {}, B = {};
+  const data = new Uint8Array(N * N * 4);
   for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
-    let n = 0;
-    for (const [f, a] of grain) n += f(x, y) * a;
-    const ridge = 1 - Math.abs(vein[0](x, y) * 0.7 + vein[1](x, y) * 0.3 - 0.5) * 2;
-    let v = 0.7 + (n - 0.5) * 0.55;
-    v *= 1 - 0.26 * THREE.MathUtils.smoothstep(ridge, 0.945, 0.995);
-    const r = rand();
-    if (r < 0.014) v *= 0.72; else if (r > 0.99) v = Math.min(1, v * 1.18);
-    v = Math.max(0, Math.min(1, v));
+    big(x, y, A); small(x, y, B);
+    const domeA = Math.sqrt(Math.max(0, 1 - (A.f1 / 0.72) ** 2)), gapA = smoothstep(0, 0.28, A.f2 - A.f1);
+    const domeB = Math.sqrt(Math.max(0, 1 - (B.f1 / 0.72) ** 2)), gapB = smoothstep(0, 0.3, B.f2 - B.f1);
+    let lump = 0;
+    for (const [f, a] of lumps) lump += f(x, y) * a;
+    const sand = rand();                                            // fine sand on top of the grains
+    const h = Math.min(1, Math.max(0, 0.46 * domeA * (0.7 + 0.3 * gapA) + 0.28 * domeB + 0.26 * lump + 0.04 * sand));
+    let v = 0.88 + 0.08 * (A.tint - 0.5) + 0.06 * (B.tint - 0.5) + 0.05 * (sand - 0.5);   // gentle grain-to-grain shades
+    const speck = smoothstep(0.42, 0.28, A.f1);                     // a round grain in the middle of the cell
+    if (A.tint < 0.04) v *= 1 - 0.32 * speck; else if (A.tint > 0.965) v *= 1 + 0.1 * speck;   // a few dark and light grains
+    v *= (0.86 + 0.14 * gapA) * (0.9 + 0.1 * gapB);                 // only slightly shadowed between grains
+    v *= 0.86 + 0.16 * h;
+    v = Math.min(1, v);
     const i = (y * N + x) * 4;
-    img.data[i] = 255 * v; img.data[i + 1] = 252 * v; img.data[i + 2] = 244 * v; img.data[i + 3] = 255;
+    data[i] = 255 * v; data[i + 1] = 247 * v; data[i + 2] = 242 * v; data[i + 3] = 255 * h;
   }
-  ctx.putImageData(img, 0, 0);
-  const tex = new THREE.CanvasTexture(canvas);
+  const tex = new THREE.DataTexture(data, N, N, THREE.RGBAFormat);
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.magFilter = THREE.LinearFilter;
+  tex.minFilter = THREE.LinearMipmapLinearFilter;
+  tex.generateMipmaps = true;
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = MAX_ANISO;
+  tex.needsUpdate = true;
   return tex;
 }
 const MAX_ANISO = renderer.capabilities.getMaxAnisotropy();
 const btnRock = document.getElementById('btn-rock');
 function setRock(on) {
   rockOn = on;
-  if (on && !rockUniforms.rockMap.value.isCanvasTexture) rockUniforms.rockMap.value = makeRockTexture();
+  if (on && !rockTextureMade) { rockUniforms.rockMap.value = makeRockTexture(); rockTextureMade = true; }
   rockUniforms.rockOn.value = on ? 1 : 0;
+  edgeMat.visible = !on;   // crisp edge lines read as a wireframe on a stone surface
   btnRock.setAttribute('aria-pressed', on);
   for (const [id, b] of Object.entries(blocks)) paint(id, b.raw);
 }
@@ -2178,6 +2249,59 @@ let sectionOn = false;
 const cuts = [0, 1, 2].map(() => ({ on: false, at: 0.5, flip: false }));
 const guideMat = new THREE.LineBasicMaterial({ color: '#b3261e', transparent: true, opacity: 0.75 });
 const guides = new THREE.Group();
+// Section caps: the solid grey where a plane cuts through material. For each plane, every cube is drawn
+// twice into the stencil buffer only (inside faces add one, outside faces subtract one, clipped by that
+// plane), which leaves a non-zero count wherever the plane runs through solid; a flat grey quad on the
+// plane is then drawn only there (and resets the count). Each cap is clipped by the other planes.
+const POCHE = '#5c6168';
+const stencilMats = cutPlanes.map((plane) => [THREE.BackSide, THREE.FrontSide].map((side) => {
+  const op = side === THREE.BackSide ? THREE.IncrementWrapStencilOp : THREE.DecrementWrapStencilOp;
+  return new THREE.MeshBasicMaterial({ side, colorWrite: false, depthWrite: false, depthTest: false, clippingPlanes: [plane],
+    stencilWrite: true, stencilFunc: THREE.AlwaysStencilFunc, stencilFail: op, stencilZFail: op, stencilZPass: op });
+}));
+const caps = cutPlanes.map((plane, i) => {
+  const cap = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({
+    color: POCHE, side: THREE.DoubleSide, clippingPlanes: cutPlanes.filter((p) => p !== plane),
+    stencilWrite: true, stencilRef: 0, stencilFunc: THREE.NotEqualStencilFunc,
+    stencilFail: THREE.ReplaceStencilOp, stencilZFail: THREE.ReplaceStencilOp, stencilZPass: THREE.ReplaceStencilOp }));
+  cap.renderOrder = i + 1.1;   // after that plane's stencil passes (renderOrder i + 1)
+  cap.visible = false;
+  cap.onAfterRender = (r) => r.clearStencil();
+  scene.add(cap);
+  return cap;
+});
+// The stencil copies of a model live next to it in its holder (not inside it), so nothing that walks a
+// model's meshes (card, interfaces, animals, clicks) ever sees them.
+const stencilGroups = new WeakMap();
+function stencilGroupFor(raw) {
+  let g = stencilGroups.get(raw);
+  if (!g) {
+    g = new THREE.Group();
+    g.userData.stencilOf = raw;
+    g.position.copy(raw.position);
+    g.scale.copy(raw.scale);
+    raw.traverse((o) => {
+      if (!o.isMesh) return;
+      stencilMats.forEach((pair, i) => pair.forEach((m) => {
+        const copy = new THREE.Mesh(o.geometry, m);
+        copy.renderOrder = i + 1;
+        copy.userData.plane = i;
+        g.add(copy);
+      }));
+    });
+    stencilGroups.set(raw, g);
+  }
+  return g;
+}
+function syncStencil(active) {
+  for (const b of Object.values(blocks)) {
+    for (const child of [...b.holder.children]) if (child.userData.stencilOf && (!active || child.userData.stencilOf !== b.raw)) b.holder.remove(child);
+    if (!active || !b.raw) continue;
+    const g = stencilGroupFor(b.raw);
+    if (g.parent !== b.holder) b.holder.add(g);
+    for (const copy of g.children) copy.visible = cuts[copy.userData.plane].on;
+  }
+}
 scene.add(guides);
 function updateCuts() {
   const box = currentBounds.clone().expandByScalar(nominal * 0.03);
@@ -2188,14 +2312,26 @@ function updateCuts() {
     if (!sectionOn || !c.on) { plane.normal.set(0, 0, 1); plane.constant = 1e9; return; }
     const v = THREE.MathUtils.lerp(box.min.getComponent(a), box.max.getComponent(a), c.at);
     plane.normal.set(0, 0, 0).setComponent(a, c.flip ? 1 : -1);
-    plane.constant = c.flip ? -v : v;
+    // half a millimetre into the kept part: where cubes touch exactly on the plane, both touching faces
+    // are cut away together instead of flickering against each other
+    plane.constant = (c.flip ? -v : v) - nominal * 0.001;
     const u = (a + 1) % 3, w = (a + 2) % 3;
     const corner = (hu, hw) => new THREE.Vector3().setComponent(a, v)
       .setComponent(u, hu ? box.max.getComponent(u) : box.min.getComponent(u))
       .setComponent(w, hw ? box.max.getComponent(w) : box.min.getComponent(w));
     guides.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints([corner(0, 0), corner(1, 0), corner(1, 1), corner(0, 1)]), guideMat));
   });
-  sectionUniform.value = sectionOn && cuts.some((c) => c.on) ? 1 : 0;
+  const active = sectionOn && cuts.some((c) => c.on);
+  sectionUniform.value = active ? 1 : 0;
+  const centre = box.getCenter(new THREE.Vector3()), size = box.getSize(new THREE.Vector3()).length() * 3;
+  caps.forEach((cap, a) => {
+    cap.visible = active && cuts[a].on;
+    if (!cap.visible) return;
+    cutPlanes[a].projectPoint(centre, cap.position);
+    cap.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), cutPlanes[a].normal);
+    cap.scale.set(size, size, 1);
+  });
+  syncStencil(active);
 }
 const keptBySection = (p) => cutPlanes.every((pl) => pl.distanceToPoint(p) >= 0);
 // A plane that gets switched on cuts away the side the camera is on, so the cut faces you.

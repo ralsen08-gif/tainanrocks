@@ -456,7 +456,7 @@ let slotList = [];           // [{ key, id, short, name }]
 // ---------- 3D scene (Rhino is Z-up)
 THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
 const viewEl = document.getElementById('view');
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+const renderer = new THREE.WebGLRenderer({ antialias: true, stencil: true });   // stencil: section caps
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.localClippingEnabled = true;
@@ -2151,8 +2151,11 @@ function rockify(mat, metresPerUnit, origin = new THREE.Vector3()) {
           float layer = vRockZ * rockMetres / 0.006;   // absolute height, so layers line up across parts
           rockH += 0.1 * (1.0 - w.z) * clamp(1.0 - fwidth(layer) * 1.5, 0.0, 1.0) * sin(6.2832 * layer);
         }
-        // where a section plane cuts a cube we look at its inside faces: draw them as dark poché
-        if (sectionOn > 0.5 && !gl_FrontFacing) diffuseColor.rgb = vec3(0.16, 0.17, 0.19);`)
+`)
+      .replace('#include <dithering_fragment>', `#include <dithering_fragment>
+        // inside faces seen through a cut (only where a model isn't closed; elsewhere the section caps
+        // cover them): the same flat poché grey as the caps, without light or texture
+        if (sectionOn > 0.5 && !gl_FrontFacing) gl_FragColor = vec4(0.361, 0.380, 0.408, 1.0);`)
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
         if (rockOn > 0.5) normal = rockPerturb(-vViewPosition, normal, vec2(dFdx(rockH), dFdy(rockH)) * rockRelief, faceDirection);`);
   };
@@ -2246,6 +2249,59 @@ let sectionOn = false;
 const cuts = [0, 1, 2].map(() => ({ on: false, at: 0.5, flip: false }));
 const guideMat = new THREE.LineBasicMaterial({ color: '#b3261e', transparent: true, opacity: 0.75 });
 const guides = new THREE.Group();
+// Section caps: the solid grey where a plane cuts through material. For each plane, every cube is drawn
+// twice into the stencil buffer only (inside faces add one, outside faces subtract one, clipped by that
+// plane), which leaves a non-zero count wherever the plane runs through solid; a flat grey quad on the
+// plane is then drawn only there (and resets the count). Each cap is clipped by the other planes.
+const POCHE = '#5c6168';
+const stencilMats = cutPlanes.map((plane) => [THREE.BackSide, THREE.FrontSide].map((side) => {
+  const op = side === THREE.BackSide ? THREE.IncrementWrapStencilOp : THREE.DecrementWrapStencilOp;
+  return new THREE.MeshBasicMaterial({ side, colorWrite: false, depthWrite: false, depthTest: false, clippingPlanes: [plane],
+    stencilWrite: true, stencilFunc: THREE.AlwaysStencilFunc, stencilFail: op, stencilZFail: op, stencilZPass: op });
+}));
+const caps = cutPlanes.map((plane, i) => {
+  const cap = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({
+    color: POCHE, side: THREE.DoubleSide, clippingPlanes: cutPlanes.filter((p) => p !== plane),
+    stencilWrite: true, stencilRef: 0, stencilFunc: THREE.NotEqualStencilFunc,
+    stencilFail: THREE.ReplaceStencilOp, stencilZFail: THREE.ReplaceStencilOp, stencilZPass: THREE.ReplaceStencilOp }));
+  cap.renderOrder = i + 1.1;   // after that plane's stencil passes (renderOrder i + 1)
+  cap.visible = false;
+  cap.onAfterRender = (r) => r.clearStencil();
+  scene.add(cap);
+  return cap;
+});
+// The stencil copies of a model live next to it in its holder (not inside it), so nothing that walks a
+// model's meshes (card, interfaces, animals, clicks) ever sees them.
+const stencilGroups = new WeakMap();
+function stencilGroupFor(raw) {
+  let g = stencilGroups.get(raw);
+  if (!g) {
+    g = new THREE.Group();
+    g.userData.stencilOf = raw;
+    g.position.copy(raw.position);
+    g.scale.copy(raw.scale);
+    raw.traverse((o) => {
+      if (!o.isMesh) return;
+      stencilMats.forEach((pair, i) => pair.forEach((m) => {
+        const copy = new THREE.Mesh(o.geometry, m);
+        copy.renderOrder = i + 1;
+        copy.userData.plane = i;
+        g.add(copy);
+      }));
+    });
+    stencilGroups.set(raw, g);
+  }
+  return g;
+}
+function syncStencil(active) {
+  for (const b of Object.values(blocks)) {
+    for (const child of [...b.holder.children]) if (child.userData.stencilOf && (!active || child.userData.stencilOf !== b.raw)) b.holder.remove(child);
+    if (!active || !b.raw) continue;
+    const g = stencilGroupFor(b.raw);
+    if (g.parent !== b.holder) b.holder.add(g);
+    for (const copy of g.children) copy.visible = cuts[copy.userData.plane].on;
+  }
+}
 scene.add(guides);
 function updateCuts() {
   const box = currentBounds.clone().expandByScalar(nominal * 0.03);
@@ -2256,14 +2312,26 @@ function updateCuts() {
     if (!sectionOn || !c.on) { plane.normal.set(0, 0, 1); plane.constant = 1e9; return; }
     const v = THREE.MathUtils.lerp(box.min.getComponent(a), box.max.getComponent(a), c.at);
     plane.normal.set(0, 0, 0).setComponent(a, c.flip ? 1 : -1);
-    plane.constant = c.flip ? -v : v;
+    // half a millimetre into the kept part: where cubes touch exactly on the plane, both touching faces
+    // are cut away together instead of flickering against each other
+    plane.constant = (c.flip ? -v : v) - nominal * 0.001;
     const u = (a + 1) % 3, w = (a + 2) % 3;
     const corner = (hu, hw) => new THREE.Vector3().setComponent(a, v)
       .setComponent(u, hu ? box.max.getComponent(u) : box.min.getComponent(u))
       .setComponent(w, hw ? box.max.getComponent(w) : box.min.getComponent(w));
     guides.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints([corner(0, 0), corner(1, 0), corner(1, 1), corner(0, 1)]), guideMat));
   });
-  sectionUniform.value = sectionOn && cuts.some((c) => c.on) ? 1 : 0;
+  const active = sectionOn && cuts.some((c) => c.on);
+  sectionUniform.value = active ? 1 : 0;
+  const centre = box.getCenter(new THREE.Vector3()), size = box.getSize(new THREE.Vector3()).length() * 3;
+  caps.forEach((cap, a) => {
+    cap.visible = active && cuts[a].on;
+    if (!cap.visible) return;
+    cutPlanes[a].projectPoint(centre, cap.position);
+    cap.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), cutPlanes[a].normal);
+    cap.scale.set(size, size, 1);
+  });
+  syncStencil(active);
 }
 const keptBySection = (p) => cutPlanes.every((pl) => pl.distanceToPoint(p) >= 0);
 // A plane that gets switched on cuts away the side the camera is on, so the cut faces you.

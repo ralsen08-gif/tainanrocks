@@ -26,6 +26,7 @@ Rhino (optional)    ◀───────────  /api/state  (WorkshopS
 | `api/state.js` | Tells viewers which groups have published and where their files are |
 | `lib/manifest.js` | Shared storage logic |
 | `rhino/WorkshopPublish.py` | The Publish button for students (Rhino 7 and 8, Windows and Mac) |
+| `grasshopper/WorkshopPush.py` | The same from Grasshopper: a script component that pushes geometry straight to the screen |
 | `rhino/WorkshopSync.py` | Optional: shows all published pieces inside your own Rhino |
 
 ## Set up (once, about 10 minutes)
@@ -111,6 +112,27 @@ The address keeps the current view, so you can bookmark one: `…/#matrix`, `…
 A solid line shows this cube's edges in the plane, a dashed line the neighbour's. Next to it are the areas in m² and as a share of the shared face: solid surface touching, voids connecting, each one-sided area, and how much of each cube's voids on that face open into the other's. Areas are counted on a fine raster (about 0.6 mm per pixel on a 0.45 m face). Faces count as touching when the cubes' bounding boxes sit within 3% of a cube's size of each other. **Print** prints the selected face's drawing and numbers.
 
 URL options: `?title=Studio%20Rotterdam` sets the heading, `?poll=5` the refresh interval in seconds, `?groups=8` the number of groups, `?explode=1` the starting separation (1 = each piece moves its own distance from the centre again; 0–3), `?view=matrix` the starting view, `?colors=model` (or `white`) the starting colours, `?rock=1` starts in stone. Sun: `?sun=1` starts with the sun on, `?day=172&time=15:00` (day of the year, 1–365) the moment, `?lat=…&lon=…&tz=…&place=…` another location, `?north=30` if north in the Rhino model is turned 30° anticlockwise from +Y.
+
+## Publishing from Grasshopper
+
+`grasshopper/WorkshopPush.py` is a Grasshopper Python script component that publishes geometry straight from a definition, to the same place as the Publish button. Set `SERVER_URL` and `WORKSHOP_KEY` at its top like in `WorkshopPublish.py`.
+
+1. Drop a Python script component on the canvas (Rhino 7: *GhPython Script*; Rhino 8: *Python 3 Script* or *IronPython 2 Script*), open it and paste the whole file in.
+2. Set up the inputs (zoom in on the component to add and rename them; right-click an input for its access and type hint):
+
+   | Input | Access / type hint | What it is |
+   |---|---|---|
+   | `G` | List Access, GeometryBase | the cube: Breps, meshes, SubDs, extrusions (all of it is published together) |
+   | `group` | int | the group number, 1–8 |
+   | `push` | bool | a **Button**: each click publishes once |
+   | `auto` | bool, optional | a **Boolean Toggle**: publishes whenever the geometry changes, at most once every 15 s (the last change is always sent) |
+   | `colour` | Color, optional | the cube's colour on the screen; without it the group colour is used |
+   | `server`, `key` | str, optional | override `SERVER_URL` / `WORKSHOP_KEY` |
+
+3. Rename the output to `status`: it says what happened. The component shows the group number underneath and turns orange or red when something needs attention.
+4. Optional: right-click the component → *Create User Object…* to keep it in the toolbar.
+
+Geometry is meshed with the file's render-mesh settings and converted to metres, so it lines up with what's published from Rhino. **auto** is limited to one publish every 15 seconds because each publish costs a few Blob operations; dragging a slider would otherwise send dozens.
 
 ## Optional: blocks inside your own Rhino
 

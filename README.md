@@ -93,7 +93,7 @@ Clicking a group chip at the bottom left opens that group in One by one with its
 
 **Section** (X) cuts the model with up to three planes, one along each axis. Tick X, Y or Z, slide the plane through the model (its position is a share of what's on screen, so it works in every view), and ⇄ keeps the other side. A plane that's switched on removes the side the camera is on, so the cut faces you. Cut material shows as dark poché; coloured patches inside it are the faces of voids. Thin red lines mark the planes, and clicking skips what's cut away.
 
-**Rock** (T) shows the cubes in stone: a sandstone-like pattern (made in the browser, no image files) about 35 cm across, tinted with the group colour, or plain stone together with the white model.
+**Rock** (T) shows the cubes as coarse, 3D-printed sand-stone: rounded grains of about 4 and 2 mm with relief that catches the light (bump mapping), soft lumps and faint horizontal print layers every 6 mm. It's generated in the browser (no image files, about half a second the first time), is fixed to each cube, and fades to plain colour in the distance rather than shimmering. Edge lines are hidden while it's on. Together with the white model it's plain pinkish-grey stone; with group colours each cube is a tinted stone.
 
 The address keeps the current view, so you can bookmark one: `…/#matrix`, `…/#exploded`, `…/#single-3`, `…/#interfaces-3`.
 
